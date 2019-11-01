@@ -44,10 +44,10 @@ def translate_all_in_dir(dir_input_path, dir_output_path, north_offset, east_off
 
 
 if __name__ == '__main__':
-    INPUT_DIR = r"../data/GAULA-1-OK"
-    OUTPUT_DIR = r"../data/GAULA_1_OK_translated"
-    north_offset = 53   # meters
-    east_offset = -263  # meters
+    INPUT_DIR = r"/media/kitkat/Seagate Expansion Drive/Master_project/river_pairings/lærdal_1976/OK"
+    OUTPUT_DIR = INPUT_DIR
+    north_offset = 53+8+7   # meters
+    east_offset = -263+9  # meters
 
     translate_all_in_dir(INPUT_DIR, OUTPUT_DIR, north_offset, east_offset)
 
