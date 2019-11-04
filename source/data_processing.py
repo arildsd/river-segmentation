@@ -50,6 +50,7 @@ def rasterize_polygons(polygons, image_path, class_name, driver=gdal.GetDriverBy
 
     return label_raster
 
+
 def find_closest_pixel(i, j, arrays, threshold=50):
     """
 
@@ -136,17 +137,16 @@ def create_raster_labels(image_path, poly_dict, destination_path, driver=gdal.Ge
     label_matrix = merge_labels_rasters(label_raster_dict)
     label_dataset = driver.Create(destination_path, image_ds.RasterXSize(), image_ds.RasterYSize(),
                                   1, gdal.GDT_Int16)
-    label
-    #TODO: transform geometries to np arrays
-    #TODO: figure out the post-processing on the geometries
-    pass
+    label_dataset.GetRasterBand(1).WriteArray(label_matrix)
+    # Save the gdal way
+    label_dataset = None
 
 
 def create_bounding_box(image_ds):
     # Create a bounding box geometry for the image
     geo_transform = image_ds.GetGeoTransform()
-    n_pixels_north = image_ds.RasterYSize()
-    n_pixels_east = image_ds.RasterXSize()
+    n_pixels_north = image_ds.RasterYSize
+    n_pixels_east = image_ds.RasterXSize
     top_left_coordinate = (geo_transform[0], geo_transform[3])
     bottom_right_coordinate = (geo_transform[0] - n_pixels_north * geo_transform[1],
                                geo_transform[3] - geo_transform[5] * n_pixels_east)
@@ -160,36 +160,74 @@ def create_bounding_box(image_ds):
     return rectangle
 
 
-def load_polygons(filepath):
-    polygons = []
-    with open(filepath, "r") as file:
-        geojson = json.load(file)
-        crs = geojson["crs"]["properties"]["name"].split(":")
-        if crs[0].lower() != "epsg":
-            raise Exception(f"The coordinate system for {filepath} was not espg, it was {crs[0]}")
-        epsg_number = int(crs[1])
-        reference = osr.SpatialReference()
-        reference.ImportFromEPSG(epsg_number)
-        features = geojson["features"]
-        for feature in features:
-            geometry = feature["geometry"]
-            poly = ogr.CreateGeometryFromJson(str(geometry))
-            poly.AssignSpatialReference(reference)
-            polygons.append(poly)
-    return polygons
+def name_to_id(name):
+    name = name.lower()
+    if name == "water":
+        return 0
+    elif name == "gravel":
+        return 1
+    elif name == "vegetation":
+        return 2
+    elif name == "farmland":
+        return 3
+    elif name == "human-constructions" or name == "human-construction":
+        return 4
+    elif name == "undefined":
+        return 5
+    else:
+        print(f"WARNING: could not assign the name {name} to an id")
+        return None
+
+
+def load_polygons(folder_path):
+    """
+    Loads all the shapefiles in the folder into gdal geometries.
+    :param folder_path: The path to the shapefile folder
+    :return: A dict with ID -> label geometry
+    """
+    id_poly_dict = {}
+    filepaths = glob.glob(os.path.join(folder_path, "*.shp"))
+    print(f"Filepaths: {filepaths}")
+    for path in filepaths:
+        # Get the ID corresponding to the name
+        last_part_of_path = os.path.split(path)[-1].replace(".shp", "")
+        identifier = name_to_id(last_part_of_path.split("_")[-1])
+
+        # Load the shapefile into a geometry
+        driver = ogr.GetDriverByName("ESRI Shapefile")
+        ds = driver.Open(path, 0)
+        layer = ds.GetLayer()
+        polys = []
+        for feature in layer:
+            geom = feature.GetGeometryRef()
+            geom.GetSpatialReference()
+            polys.append(geom)
+        id_poly_dict[identifier] = polys
+    return id_poly_dict
 
 
 if __name__ == '__main__':
     gdal.UseExceptions()
+    # Define the paths to the aerial images
+    ORTO_ROOT_FOLDER_PATH = r"D:\ortofoto"
+    # Define the path to the labels
+    LABEL_ROOT_PATH = r"D:\labels\refined_OD_labels"
+    # Define the river folders that will be processed
+    RIVER_SUBFOLDER_NAMES = ["gaula_1963", "lærdal_1976"]
+    # Destination root path
+    DEST_ROOT_PATH = r"D:\labels\rasters"
 
-    PLANE_IMAGES_FOLDER = r"data/plane_images"
-    GEOJSON_PATH = r"../data/polygons/gaula_1963_river.geojson"
-    polys = load_polygons(GEOJSON_PATH)
-    test_image_path = "../data/test/gaula_1963.tif"
-    create_raster_labels(test_image_path, polys)
-    # Take all the geotifs and intersect them with the polygons.
-    plane_images_file_paths = glob.glob(os.path.join(PLANE_IMAGES_FOLDER, "*", "*.tif"))
-    for image_path in plane_images_file_paths:
-        # Intersect label polygons and create a raster label
-        #create_raster_labels()
-        pass
+    # Create label rasters
+    for subfolder in RIVER_SUBFOLDER_NAMES:
+        # Images
+        orto_folder_path = os.path.join(ORTO_ROOT_FOLDER_PATH, subfolder)
+        image_paths = glob.glob(os.path.join(orto_folder_path, "*.tif"))
+        # Labels
+        label_folder_path = os.path.join(LABEL_ROOT_PATH, subfolder)
+        # Get polygons
+        id_poly_dict = load_polygons(label_folder_path)
+        # Create raster labels for the area covered by the image
+        for path in image_paths:
+            create_raster_labels(path, id_poly_dict,
+                                 os.path.join(DEST_ROOT_PATH, subfolder, "label" + os.path.split(path)[-1]))
+
