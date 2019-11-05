@@ -6,6 +6,7 @@ import os
 import sys
 from osgeo import ogr
 from osgeo import osr
+import copy
 
 """
 Look here for cheats:
@@ -31,11 +32,11 @@ def rasterize_polygons(polygons, image_path, class_name, driver=gdal.GetDriverBy
     image_ds = gdal.Open(image_path)
     geo_transform = image_ds.GetGeoTransform()
     projection = image_ds.GetProjection()
-    n_pixels_north = image_ds.RasterYSize()
-    n_pixels_east = image_ds.RasterXSize()
+    n_pixels_north = image_ds.RasterYSize
+    n_pixels_east = image_ds.RasterXSize
 
     # Create empty image
-    output_path = image_path.remove(".tif")
+    output_path = image_path.replace(".tif", "")
     output_path += f"_temp_label_{class_name}.tif"
     label_raster = driver.Create(output_path, n_pixels_east, n_pixels_north,
                   1, gdal.GDT_Int16)
@@ -51,7 +52,7 @@ def rasterize_polygons(polygons, image_path, class_name, driver=gdal.GetDriverBy
     return label_raster
 
 
-def find_closest_pixel(i, j, arrays, threshold=50):
+def find_closest_pixel(i, j, arrays, threshold=10):
     """
 
     :param i: shape 0 axis index
@@ -92,7 +93,7 @@ def merge_labels_rasters(label_raster_dict):
     for array in arrays:
         if array.shape != shape:
             raise Exception(f"The shapes does not match, {shape} != {array.shape}")
-    label_matrix = np.zeros(shape)
+    label_matrix = np.zeros(shape, dtype=int)
     for i in range(shape[0]):
         for j in range(shape[1]):
             ids_at_pixel = []
@@ -112,7 +113,7 @@ def merge_labels_rasters(label_raster_dict):
                 # Find the majority id
                 for id in ids_at_pixel:
                     id_count[id] += 1
-                return np.argmax(id_count)
+                label_matrix[i][j] = np.argmax(id_count)
             else:
                 raise Exception("Something weird happened...")
     return label_matrix
@@ -133,30 +134,48 @@ def create_raster_labels(image_path, poly_dict, destination_path, driver=gdal.Ge
         polys = poly_dict[current_class]
         # Find intersecting polygons
         intersecting_polys = find_intersecting_polys(bounding_box, polys)
-        label_raster_dict[current_class] = rasterize_polygons(intersecting_polys, image_path, current_class)
+        if len(intersecting_polys) == 0:
+            label_raster_dict[current_class] = None
+        else:
+            label_raster_dict[current_class] = rasterize_polygons(intersecting_polys, image_path, current_class)
+    # Check if there is any polygons in the image
+    have_overlap = False
+    for v in label_raster_dict.values():
+        if v is not None:
+            have_overlap = True
+            break
+    if not have_overlap:
+        # There was no overlapping polygons so there is no point in making a raster for it
+        return None
+    # Merge the different class layer to one
     label_matrix = merge_labels_rasters(label_raster_dict)
-    label_dataset = driver.Create(destination_path, image_ds.RasterXSize(), image_ds.RasterYSize(),
+    label_dataset = driver.Create(destination_path, image_ds.RasterXSize, image_ds.RasterYSize,
                                   1, gdal.GDT_Int16)
     label_dataset.GetRasterBand(1).WriteArray(label_matrix)
-    # Save the gdal way
+    # Save, the gdal way
     label_dataset = None
 
 
 def create_bounding_box(image_ds):
     # Create a bounding box geometry for the image
     geo_transform = image_ds.GetGeoTransform()
+    projection = image_ds.GetProjection()
     n_pixels_north = image_ds.RasterYSize
     n_pixels_east = image_ds.RasterXSize
     top_left_coordinate = (geo_transform[0], geo_transform[3])
-    bottom_right_coordinate = (geo_transform[0] - n_pixels_north * geo_transform[1],
-                               geo_transform[3] - geo_transform[5] * n_pixels_east)
+    bottom_right_coordinate = (geo_transform[0] + n_pixels_east * geo_transform[1],
+                               geo_transform[3] + geo_transform[5] * n_pixels_north)
     ring = ogr.Geometry(ogr.wkbLinearRing)
     ring.AddPoint(top_left_coordinate[0], top_left_coordinate[1])  # Top left
     ring.AddPoint(top_left_coordinate[0], bottom_right_coordinate[1])  # Top right
     ring.AddPoint(bottom_right_coordinate[0], bottom_right_coordinate[1])  # Bottom right
     ring.AddPoint(bottom_right_coordinate[0], top_left_coordinate[1])  # Bottom left
+    ring.AddPoint(top_left_coordinate[0], top_left_coordinate[1])  # Top left, closes the ring
     rectangle = ogr.Geometry(ogr.wkbPolygon)
     rectangle.AddGeometry(ring)
+    ref = osr.SpatialReference()
+    ref.ImportFromEPSG(25833)
+    rectangle.AssignSpatialReference(ref)
     return rectangle
 
 
@@ -199,8 +218,10 @@ def load_polygons(folder_path):
         layer = ds.GetLayer()
         polys = []
         for feature in layer:
-            geom = feature.GetGeometryRef()
-            geom.GetSpatialReference()
+            geom = feature.GetGeometryRef().Clone()
+            ref = osr.SpatialReference()
+            ref.ImportFromEPSG(25833)
+            geom.AssignSpatialReference(ref)
             polys.append(geom)
         id_poly_dict[identifier] = polys
     return id_poly_dict
@@ -230,4 +251,4 @@ if __name__ == '__main__':
         for path in image_paths:
             create_raster_labels(path, id_poly_dict,
                                  os.path.join(DEST_ROOT_PATH, subfolder, "label" + os.path.split(path)[-1]))
-
+    print("Done!")
