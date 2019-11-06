@@ -21,7 +21,7 @@ def find_intersecting_polys(geometry, polys):
     return intersecting_polys
 
 
-def rasterize_polygons(polygons, image_path, class_name, driver=gdal.GetDriverByName("GTiff")):
+def rasterize_polygons(polygons, image_path, class_name, shapefile_path, driver=gdal.GetDriverByName("GTiff")):
     """
     Retuns a data set image with the bounding box dimensions and the polygon locations marked by 1.
     :param polygons: A list of polygons of the same class
@@ -34,7 +34,7 @@ def rasterize_polygons(polygons, image_path, class_name, driver=gdal.GetDriverBy
     projection = image_ds.GetProjection()
     n_pixels_north = image_ds.RasterYSize
     n_pixels_east = image_ds.RasterXSize
-
+    image_ds = None
     # Create empty image
     output_path = image_path.replace(".tif", "")
     output_path += f"_temp_label_{class_name}.tif"
@@ -43,11 +43,26 @@ def rasterize_polygons(polygons, image_path, class_name, driver=gdal.GetDriverBy
     label_raster.SetGeoTransform(geo_transform)
     label_raster.SetProjection(projection)
 
-    # Burn the polygons into the new image
+    # set up the shapefile driver
+    shapefile_driver = ogr.GetDriverByName("Memory")
+    # create the data source
+    poly_ds = shapefile_driver.CreateDataSource(shapefile_path)
+    srs = osr.SpatialReference()
+    srs.ImportFromEPSG(25833)
+    layer = poly_ds.CreateLayer(os.path.split(shapefile_path.replace(".shp", ""))[-1],
+                                srs, ogr.wkbPolygon)
+    # Add the polygons to the new layer
     for poly in polygons:
-        gdal.Rasterize(label_raster, poly)
-    # Save and close the files
-    image_ds = None
+        feature = ogr.Feature(layer.GetLayerDefn())
+        feature.SetGeometry(poly)
+        layer.CreateFeature(feature)
+        feature.Destroy()
+
+    # Burn the polygons into the new image
+    gdal.RasterizeLayer(label_raster, (1,), layer, burn_values=(1,))
+    poly_ds.Destroy()
+    # Save and close the image
+
 
     return label_raster
 
@@ -62,35 +77,60 @@ def find_closest_pixel(i, j, arrays, threshold=10):
     :return: The class of the closest pixel (majority if there is more than one)
     """
 
+
     distance_to_closest_edge = min(i, j, arrays[0].shape[0]-i-1, arrays[0].shape[1]-j-1)
+    max_radius = min(threshold, distance_to_closest_edge)
+    # Check if there are any classes present
+    id_count = [0] * len(arrays)
+    total = 0
+    for identifier, array in enumerate(arrays):
+        if array is not None:
+            id_count[identifier] += np.sum(array[i-max_radius:i+max_radius, j-max_radius:j+max_radius])
+    if sum(id_count) > 0:
+        return np.argmax(id_count)
+    else:
+        # No class was in the search area, return the ID of the unknown class
+        return 5
+
+    # Unreachable code on purpose, it was to slow
     radius = 0
-    while radius < min(threshold, distance_to_closest_edge):
+    while radius < max_radius:
         ids = []
         radius += 1
         for search_i in range(i-radius, i+radius+1):
             for search_j in range(j-radius, j+radius+1):
-                for i, array in enumerate(arrays):
+                for identifier, array in enumerate(arrays):
+                    if array is None: continue
                     if array[search_i][search_j] > 0:
-                        ids.append(i)
+                        ids.append(identifier)
         id_count = [0]*len(arrays)
         # Find the majority id
         for id in ids:
             id_count[id] += 1
         return np.argmax(id_count)
-    # Return the id of the "unknown" class
+    # Return the id of the "unknown" class since no other classes where found
     return 5
 
 
-
 def merge_labels_rasters(label_raster_dict):
+    """
+
+    (array = None is equivalent with a zero array but is kept as None to save computation time)
+    :param label_raster_dict:
+    :return:
+    """
     arrays = []
     s_IDs = sorted(label_raster_dict.keys())
     for id in s_IDs:
-        array = label_raster_dict[id].GetRasterBand(1).ReadAsArray()
+        if label_raster_dict[id] is None:
+            array = None
+        else:
+            array = label_raster_dict[id].GetRasterBand(1).ReadAsArray()
         arrays.append(array)
     # Check array shapes, they should all be the same
     shape = arrays[0].shape
     for array in arrays:
+        if array is None: continue
         if array.shape != shape:
             raise Exception(f"The shapes does not match, {shape} != {array.shape}")
     label_matrix = np.zeros(shape, dtype=int)
@@ -98,9 +138,12 @@ def merge_labels_rasters(label_raster_dict):
         for j in range(shape[1]):
             ids_at_pixel = []
             for id, array in enumerate(arrays):
-                pixel = array[i][j]
-                if pixel > 0:
-                    ids_at_pixel.append(id)
+                if array is None:
+                    continue
+                else:
+                    pixel = array[i][j]
+                    if pixel > 0:
+                        ids_at_pixel.append(id)
             # Only one class at the location
             if len(ids_at_pixel) == 1:
                 label_matrix[i][j] = ids_at_pixel[0]
@@ -137,7 +180,9 @@ def create_raster_labels(image_path, poly_dict, destination_path, driver=gdal.Ge
         if len(intersecting_polys) == 0:
             label_raster_dict[current_class] = None
         else:
-            label_raster_dict[current_class] = rasterize_polygons(intersecting_polys, image_path, current_class)
+            shapefile_path = r"D:\temp\post_processed_label_" + os.path.split(destination_path.replace(".tif", ".shp"))[-1]
+            label_raster_dict[current_class] = rasterize_polygons(intersecting_polys, image_path,
+                                                                  current_class, shapefile_path)
     # Check if there is any polygons in the image
     have_overlap = False
     for v in label_raster_dict.values():
@@ -151,9 +196,12 @@ def create_raster_labels(image_path, poly_dict, destination_path, driver=gdal.Ge
     label_matrix = merge_labels_rasters(label_raster_dict)
     label_dataset = driver.Create(destination_path, image_ds.RasterXSize, image_ds.RasterYSize,
                                   1, gdal.GDT_Int16)
+    label_dataset.SetGeoTransform(image_ds.GetGeoTransform())
+    label_dataset.SetProjection(image_ds.GetProjection())
     label_dataset.GetRasterBand(1).WriteArray(label_matrix)
     # Save, the gdal way
     label_dataset = None
+    print(f"Wrote label image {image_path} to {destination_path}")
 
 
 def create_bounding_box(image_ds):
