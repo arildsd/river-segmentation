@@ -21,7 +21,7 @@ def find_intersecting_polys(geometry, polys):
     return intersecting_polys
 
 
-def rasterize_polygons(polygons, image_path, class_name, shapefile_path, driver=gdal.GetDriverByName("GTiff")):
+def rasterize_polygons(polygons, image_path, class_name, shapefile_path, driver=gdal.GetDriverByName("MEM")):
     """
     Retuns a data set image with the bounding box dimensions and the polygon locations marked by 1.
     :param polygons: A list of polygons of the same class
@@ -73,12 +73,17 @@ def find_closest_pixel(i, j, arrays, threshold=10):
     :param i: shape 0 axis index
     :param j: shape 1 axis index
     :param arrays: arrays with labels
-    :param threshold: The distance in pixels that searched though
+    :param threshold: The (max) distance in pixels that are searched
     :return: The class of the closest pixel (majority if there is more than one)
     """
-
-
-    distance_to_closest_edge = min(i, j, arrays[0].shape[0]-i-1, arrays[0].shape[1]-j-1)
+    # Find shape
+    shape = None
+    for array in arrays:
+        if array is not None:
+            shape = array.shape
+            break
+    # Find dimensions of the box
+    distance_to_closest_edge = min(i, j, shape[0]-i-1, shape[1]-j-1)
     max_radius = min(threshold, distance_to_closest_edge)
     # Check if there are any classes present
     id_count = [0] * len(arrays)
@@ -128,7 +133,11 @@ def merge_labels_rasters(label_raster_dict):
             array = label_raster_dict[id].GetRasterBand(1).ReadAsArray()
         arrays.append(array)
     # Check array shapes, they should all be the same
-    shape = arrays[0].shape
+    shape = None
+    for array in arrays:
+        if array is not None:
+            shape = array.shape
+            break
     for array in arrays:
         if array is None: continue
         if array.shape != shape:
@@ -169,6 +178,11 @@ def create_raster_labels(image_path, poly_dict, destination_path, driver=gdal.Ge
     :param poly_dict: A dict with class_ID -> class_polygons
     :return:
     """
+    # Skip if the image has a label image already
+    if os.path.isfile(destination_path):
+        print(f"{destination_path} already exists")
+        return None
+
     # Create bounding box for the image
     image_ds = gdal.Open(image_path)
     bounding_box = create_bounding_box(image_ds)
