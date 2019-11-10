@@ -7,11 +7,163 @@ import sys
 from osgeo import ogr
 from osgeo import osr
 import copy
+import random
 
 """
 Look here for cheats:
 https://pcjericks.github.io/py-gdalogr-cookbook/geometry.html
 """
+
+# GLOBAL CONSTANTS
+UNKNOWN_CLASS_ID = 5
+
+class TrainingImage:
+    """
+    A class for containing data (and metadata) for a training image.
+    """
+
+    def __init__(self, data, labels, geo_transform, name="", projection=None):
+        if projection is None:
+            projection = gdal.osr.SpatialReference()
+            projection.ImportFromEPSG(25833)
+        self.projection = projection
+        self.geo_transform = geo_transform
+        if data.shape != labels.shape:
+            raise Exception(f"The shape of the data ({data.shape}) and labels ({labels.shape}) did not match")
+        self.data = data
+        self.labels = labels
+        self.shape = data.shape
+        self.name = name
+
+    def _write_array_to_raster(self, output_filepath, array):
+        """
+        Writes the given array to a raster image
+        :param output_filepath: The output file
+        :return: Nothing
+        """
+
+        driver = gdal.GetDriverByName("GTiff")
+        raster = driver.Create(output_filepath, self.shape[1], self.shape[0],
+                      1, gdal.GDT_Int16)
+        raster.SetGeoTransform(self.geo_transform)
+        raster.SetProjection(self.projection)
+        raster.GetRasterBand(1).WriteArray(array)
+        raster = None
+
+    def write_data_to_raster(self, output_filepath):
+        self._write_array_to_raster(output_filepath, self.data)
+
+    def write_labels_to_raster(self, output_filepath):
+        self._write_array_to_raster(output_filepath, self.labels)
+
+
+def create_pointer_files(data_path, output_folder, train_size=0.8, valid_size=0.0, test_size=0.2, shuffle=True):
+    """
+    Make txt files that point to images. Splitts into training, validation and test sets.
+    :param output_folder:
+    :param random_seed:
+    :param data_path:
+    :param train_size:
+    :param valid_size:
+    :param test_size:
+    :param shuffle:
+    :return:
+    """
+    total = train_size + test_size + valid_size
+    if total != 1:
+        raise Exception(f"The sizes don't sum to one, they sum to {total}")
+    image_paths = glob.glob(os.path.join(data_path, "images", "*.tif"))
+    if shuffle:
+        random.shuffle(image_paths)
+    label_paths = [path.replace("images", "labels") for path in image_paths]
+    os.makedirs(output_folder, exist_ok=True)
+    # Make training file
+    with open(os.path.join(output_folder, "train.txt"), "w+") as f:
+        pairs = [image_paths[i] + ";" + label_paths[i] for i in range(int(train_size*len(image_paths)))]
+        f.write("\n".join(pairs))
+    # Make validation file
+    with open(os.path.join(output_folder, "valid.txt"), "w+") as f:
+        end_index = int(train_size * len(image_paths)) + int(valid_size * len(image_paths))
+        pairs = [image_paths[i] + ";" + label_paths[i] for i in range(int(train_size * len(image_paths)), end_index)]
+        f.write("\n".join(pairs))
+    # Make test file
+    with open(os.path.join(output_folder, "test.txt"), "w+") as f:
+        start_index = int(train_size * len(image_paths)) + int(valid_size * len(image_paths))
+        pairs = [image_paths[i] + ";" + label_paths[i] for i in range(start_index, len(image_paths))]
+        f.write("\n".join(pairs))
+
+
+def divide_image(image_filepath, label_filepath, image_size=512):
+    # Load image
+    image_ds = gdal.Open(image_filepath)
+    geo_transform = image_ds.GetGeoTransform()
+    projection = image_ds.GetProjection()
+    image_matrix = image_ds.GetRasterBand(1).ReadAsArray()
+    image_ds = None
+
+    # Load label
+    label_ds = gdal.Open(label_filepath)
+    if label_ds.GetGeoTransform() != geo_transform:
+        raise Exception(f"The geo transforms of image {image_filepath} and label {label_filepath} did not match")
+    label_matrix = label_ds.GetRasterBand(1).ReadAsArray()
+    label_ds = None
+
+    training_data = []
+    # Make properly sized training data
+    # Make sure that the whole image is covered, even if the last one has to overlap
+    shape_0_indices = list(range(0, image_matrix.shape[0], image_size))
+    shape_0_indices[-1] = image_matrix.shape[0] - image_size
+    shape_1_indices = list(range(0, image_matrix.shape[1], image_size))
+    shape_1_indices[-1] = image_matrix.shape[1] - image_size
+    # Split the images
+    for shape_0 in shape_0_indices:
+        for shape_1 in shape_1_indices:
+            labels = label_matrix[shape_0:shape_0 + image_size, shape_1:shape_1 + image_size]
+            # Check if the entire image is of the unknown class, if so skip it
+            is_unknown_matrix = labels == UNKNOWN_CLASS_ID
+            if np.min(is_unknown_matrix) == 1 and np.max(is_unknown_matrix) == 1:
+                continue
+            data = image_matrix[shape_0:shape_0 + image_size, shape_1:shape_1 + image_size]
+            new_geo_transform = list(geo_transform)
+            new_geo_transform[0] += shape_1 * geo_transform[1]  # East
+            new_geo_transform[3] += shape_0 * geo_transform[5]  # North
+            name = os.path.split(image_filepath)[-1].replace(".tif", "") + f"_n_{shape_0}_e_{shape_1}"
+            training_data.append(TrainingImage(data, labels, new_geo_transform, name=name, projection=projection))
+    return training_data
+
+
+def divide_and_save_images(image_filepaths, label_filepaths, output_folder=None, image_size=512):
+    """
+    This function takes big images and splits them into smaller images and saves them to disk
+    :param image_filepaths: A list of filepaths to the images that will be loaded
+    :param label_filepaths: A list of filepaths to the label (rasters) that will be loaded
+    :param output_folder: The folder where the new rasters will be saved. If it is None, the files will not be saved
+    :param image_size: The size of the new images, measured in pixels
+    :return: list of TrainingImage objects
+    """
+
+    # Check that the size of the filepaths are the same are loaded
+    if len(image_filepaths) != len(label_filepaths):
+        raise Exception(f"The image filepaths and label filepaths must be in sync,"
+                        f" but their lengths did not match. {len(image_filepaths)} != {len(label_filepaths)}")
+    # Load the images
+    training_images = []
+    for i in range(len(image_filepaths)):
+        training_images += divide_image(image_filepaths[i], label_filepaths[i], image_size=image_size)
+    # Write the images to disk
+    if output_folder is not None:
+        # Make output folders
+        os.makedirs(os.path.join(output_folder, "images"), exist_ok=True)
+        os.makedirs(os.path.join(output_folder, "labels"), exist_ok=True)
+        for image in training_images:
+            # Data
+            data_path = os.path.join(output_folder, "images", image.name + ".tif")
+            image.write_data_to_raster(data_path)
+            # Labels
+            label_path = os.path.join(output_folder, "labels", image.name + ".tif")
+            image.write_labels_to_raster(label_path)
+    return training_images
+
 
 def find_intersecting_polys(geometry, polys):
     intersecting_polys = []
@@ -289,7 +441,7 @@ def load_polygons(folder_path):
     return id_poly_dict
 
 
-if __name__ == '__main__':
+def process_and_rasterize_raw_data():
     gdal.UseExceptions()
     # Define the paths to the aerial images
     ORTO_ROOT_FOLDER_PATH = r"D:\ortofoto"
@@ -314,3 +466,34 @@ if __name__ == '__main__':
             create_raster_labels(path, id_poly_dict,
                                  os.path.join(DEST_ROOT_PATH, subfolder, "label" + os.path.split(path)[-1]))
     print("Done!")
+
+def main():
+    gdal.UseExceptions()
+    # Define the paths to the aerial images
+    ORTO_ROOT_FOLDER_PATH = r"D:\ortofoto"
+    # Define path to label rasters
+    LABEL_RASTER_ROOT_FOLDER = r"D:\labels\rasters"
+    # Define the river folders that will be processed
+    RIVER_SUBFOLDER_NAMES = ["gaula_1963", "lærdal_1976"]
+    # Destination root path
+    DEST_ROOT_PATH = r"D:\tiny_images\01"
+    DEST_ROOT_PATH = None
+
+    # Create label rasters
+    label_paths = []
+    image_paths = []
+    for subfolder in RIVER_SUBFOLDER_NAMES:
+        # Images
+        label_folder_path = os.path.join(LABEL_RASTER_ROOT_FOLDER, subfolder)
+        l_paths = glob.glob(os.path.join(label_folder_path, "*.tif"))
+        label_paths += l_paths
+        for l_path in l_paths:
+            name = os.path.split(l_path)[-1].replace("label", "")
+            image_path = os.path.join(ORTO_ROOT_FOLDER_PATH, subfolder, name)
+            image_paths.append(image_path)
+    divide_and_save_images(image_paths, label_paths, DEST_ROOT_PATH)
+
+
+if __name__ == '__main__':
+    random.seed(54635)
+    create_pointer_files(r"D:\tiny_images\01", r"D:\pointers\01")
