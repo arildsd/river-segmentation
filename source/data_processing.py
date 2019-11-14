@@ -444,19 +444,20 @@ def load_polygons(folder_path):
 def process_and_rasterize_raw_data():
     gdal.UseExceptions()
     # Define the paths to the aerial images
-    ORTO_ROOT_FOLDER_PATH = r"D:\ortofoto"
+    ORTO_ROOT_FOLDER_PATH = r"/home/kitkat/Master_project/flyfoto_gaula_1963"
     # Define the path to the labels
-    LABEL_ROOT_PATH = r"D:\labels\refined_OD_labels"
+    LABEL_ROOT_PATH = r"/home/kitkat/Master_project/labels/refined_OD_labels"
     # Define the river folders that will be processed
-    RIVER_SUBFOLDER_NAMES = ["gaula_1963", "lærdal_1976"]
+    RIVER_SUBFOLDER_NAMES = ["gaula_1963"]
     # Destination root path
-    DEST_ROOT_PATH = r"D:\labels\rasters"
+    DEST_ROOT_PATH = r"/home/kitkat/Master_project/labels/rasters"
 
     # Create label rasters
     for subfolder in RIVER_SUBFOLDER_NAMES:
         # Images
         orto_folder_path = os.path.join(ORTO_ROOT_FOLDER_PATH, subfolder)
-        image_paths = glob.glob(os.path.join(orto_folder_path, "*.tif"))
+        glob_string = os.path.join(orto_folder_path, "*.tif")
+        image_paths = glob.glob(glob_string)
         # Labels
         label_folder_path = os.path.join(LABEL_ROOT_PATH, subfolder)
         # Get polygons

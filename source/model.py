@@ -4,8 +4,27 @@ import numpy as np
 import os
 import sys
 import gdal
+import data_processing
 
 
+def load_data(image_path, label_path):
+    # Load image
+    image_ds = gdal.Open(image_path)
+    geo_transform = image_ds.GetGeoTransform()
+    projection = image_ds.GetProjection()
+    image_matrix = image_ds.GetRasterBand(1).ReadAsArray()
+    image_ds = None
+
+    # Load label
+    label_ds = gdal.Open(label_path)
+    if label_ds.GetGeoTransform() != geo_transform:
+        raise Exception(f"The geo transforms of image {image_path} and label {label_path} did not match")
+    label_matrix = label_ds.GetRasterBand(1).ReadAsArray()
+    label_ds = None
+
+    training_image = data_processing.TrainingImage(image_matrix, label_matrix, geo_transform,
+                                                   name=os.path.split(image_path)[-1], projection=projection)
+    return training_image
 
 def conv_block(x, kernel_size=5, number_of_convolutions=3, filters=32, activation="relu"):
     for i in range(number_of_convolutions):
@@ -55,7 +74,12 @@ def unet(input_shape, depth=3, kernel_size=5, number_of_convolutions=3, filters=
 
 
 def main(depth=3, kernel_size=5, number_of_convolutions=3, filters=32, activation="relu", n_classes=6):
-    images = []  # TODO
+    images = []
+    # Load pointer files
+    with open(r"D:\pointers\01\train.txt") as f:
+        for line in f:
+            image_path, label_path = line.split(";")
+            images.append(load_data(image_path, label_path))
     # Make dataset
     train_set_X = None
     train_set_y = None
@@ -71,8 +95,11 @@ def main(depth=3, kernel_size=5, number_of_convolutions=3, filters=32, activatio
     # Add channel axis
     train_set_X = np.expand_dims(train_set_X, -1)
     train_set_y = np.expand_dims(train_set_y, -1)
-
-    inputs, outputs = unet(train_set_X.shape[1:])
+    # Normalize images to the range [0, 1]
+    train_set_X = train_set_X / (2**8 - 1)
+    inputs, outputs = unet(train_set_X.shape[1:], depth=depth, kernel_size=kernel_size,
+                           number_of_convolutions=number_of_convolutions, filters=filters, activation=activation,
+                           n_classes=n_classes)
     model = keras.models.Model(inputs=inputs, outputs=outputs)
     # model.compile("SGD", loss="sparse_categorical_crossentropy", metrics=[keras.metrics.MeanIoU(num_classes=6)])
     model.compile("SGD", loss="sparse_categorical_crossentropy", metrics=["accuracy"])
