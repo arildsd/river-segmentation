@@ -57,7 +57,8 @@ class TrainingImage:
         self._write_array_to_raster(output_filepath, self.labels)
 
 
-def create_pointer_files(data_path, output_folder, train_size=0.8, valid_size=0.0, test_size=0.2, shuffle=True):
+def create_pointer_files(data_path, output_folder, train_size=0.6, valid_size=0.0, test_size=0.4, shuffle=True,
+                         sample_rate=1.0):
     """
     Make txt files that point to images. Splitts into training, validation and test sets.
     :param output_folder:
@@ -73,9 +74,12 @@ def create_pointer_files(data_path, output_folder, train_size=0.8, valid_size=0.
     if total != 1:
         raise Exception(f"The sizes don't sum to one, they sum to {total}")
     image_paths = glob.glob(os.path.join(data_path, "images", "*.tif"))
+    if sample_rate < 1:
+        image_paths = image_paths[:int(len(image_paths)*sample_rate)]
+
     if shuffle:
         random.shuffle(image_paths)
-    label_paths = [path.replace("images", "labels") for path in image_paths]
+    label_paths = [path.replace("images", "labels").replace("tiny_labels", "tiny_images") for path in image_paths]
     os.makedirs(output_folder, exist_ok=True)
     # Make training file
     with open(os.path.join(output_folder, "train.txt"), "w+") as f:
@@ -107,6 +111,13 @@ def divide_image(image_filepath, label_filepath, image_size=512):
         raise Exception(f"The geo transforms of image {image_filepath} and label {label_filepath} did not match")
     label_matrix = label_ds.GetRasterBand(1).ReadAsArray()
     label_ds = None
+
+    # Exclude the (big) image if it only contains water or gravel (or unknown)
+    is_class_2 = label_matrix == 2
+    is_class_3 = label_matrix == 3
+    is_class_4 = label_matrix == 4
+    if np.sum(is_class_2) + np.sum(is_class_3) + np.sum(is_class_4) == 0:
+        return []
 
     training_data = []
     # Make properly sized training data
@@ -477,8 +488,7 @@ def main():
     # Define the river folders that will be processed
     RIVER_SUBFOLDER_NAMES = ["gaula_1963", "lærdal_1976"]
     # Destination root path
-    DEST_ROOT_PATH = r"D:\tiny_images\01"
-    DEST_ROOT_PATH = None
+    DEST_ROOT_PATH = r"D:\tiny_images\03"
 
     # Create label rasters
     label_paths = []
@@ -492,9 +502,10 @@ def main():
             name = os.path.split(l_path)[-1].replace("label", "")
             image_path = os.path.join(ORTO_ROOT_FOLDER_PATH, subfolder, name)
             image_paths.append(image_path)
-    divide_and_save_images(image_paths, label_paths, DEST_ROOT_PATH)
+    divide_and_save_images(image_paths, label_paths, DEST_ROOT_PATH, image_size=256)
 
 
 if __name__ == '__main__':
+    main()
     random.seed(54635)
-    create_pointer_files(r"D:\tiny_images\01", r"D:\pointers\01")
+    create_pointer_files(r"D:\tiny_images\03", r"D:\pointers\04", train_size=0.6, test_size=0.2, valid_size=0.2)
