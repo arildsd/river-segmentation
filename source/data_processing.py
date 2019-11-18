@@ -96,6 +96,17 @@ def create_pointer_files(data_path, output_folder, train_size=0.6, valid_size=0.
         pairs = [image_paths[i] + ";" + label_paths[i] for i in range(start_index, len(image_paths))]
         f.write("\n".join(pairs))
 
+def is_quality_image(label_image, unknown_treshold=0.1):
+    """
+    Check that the image don't contain to much of the unknown class, as this is an indication of missing (wrong) labels
+    :param label_image: A numpy matrix representing the label image
+    :return: bool, true if the image passes the check, 0 otherwise
+    """
+    unknown_label_matrix = label_image == UNKNOWN_CLASS_ID
+    if np.sum(unknown_label_matrix) > unknown_treshold*unknown_label_matrix.shape[0]*unknown_label_matrix.shape[1]:
+        return False
+    return True
+
 
 def divide_image(image_filepath, label_filepath, image_size=512):
     # Load image
@@ -130,9 +141,8 @@ def divide_image(image_filepath, label_filepath, image_size=512):
     for shape_0 in shape_0_indices:
         for shape_1 in shape_1_indices:
             labels = label_matrix[shape_0:shape_0 + image_size, shape_1:shape_1 + image_size]
-            # Check if the entire image is of the unknown class, if so skip it
-            is_unknown_matrix = labels == UNKNOWN_CLASS_ID
-            if np.min(is_unknown_matrix) == 1 and np.max(is_unknown_matrix) == 1:
+            # Check if the image has to much unknown
+            if not is_quality_image(label_matrix):
                 continue
             data = image_matrix[shape_0:shape_0 + image_size, shape_1:shape_1 + image_size]
             new_geo_transform = list(geo_transform)
@@ -488,7 +498,7 @@ def main():
     # Define the river folders that will be processed
     RIVER_SUBFOLDER_NAMES = ["gaula_1963", "lærdal_1976"]
     # Destination root path
-    DEST_ROOT_PATH = r"D:\tiny_images\03"
+    DEST_ROOT_PATH = r"D:\tiny_images\04"
 
     # Create label rasters
     label_paths = []
@@ -508,4 +518,4 @@ def main():
 if __name__ == '__main__':
     main()
     random.seed(54635)
-    create_pointer_files(r"D:\tiny_images\03", r"D:\pointers\04", train_size=0.6, test_size=0.2, valid_size=0.2)
+    #create_pointer_files(r"D:\tiny_images\03", r"D:\pointers\04", train_size=0.6, test_size=0.2, valid_size=0.2)

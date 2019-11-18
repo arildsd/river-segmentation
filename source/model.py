@@ -58,6 +58,28 @@ def load_dataset(pointer_file_path):
     return data_set_X, data_set_y
 
 
+def image_augmentation(data):
+    """
+    Takes the original image matrix and add rotated images and mirrored images (with rotations).
+    This adds 7 additional images for each original image.
+    :param data:
+    :return: An numpy array with the augmented images concatenated to the data array
+    """
+    rot_90 = np.rot90(data, axes=(1, 2))
+    rot_180 = np.rot90(data, k=2, axes=(1, 2))
+    rot_270 = np.rot90(data, k=3, axes=(1, 2))
+    mirror = np.flip(data, axis=1)
+    mirror_rot_90 = np.rot90(mirror, axes=(1, 2))
+    mirror_rot_180 = np.rot90(mirror, k=2, axes=(1, 2))
+    mirror_rot_270 = np.rot90(mirror, k=3, axes=(1, 2))
+    augments = [data, rot_90, rot_180, rot_270, mirror, mirror_rot_90, mirror_rot_180, mirror_rot_270]
+    augmented_image_matrix = np.concatenate(augments, axis=0)
+
+    return augmented_image_matrix
+
+
+
+
 def conv_block(x, kernel_size=5, number_of_convolutions=3, filters=32, activation="relu"):
     for i in range(number_of_convolutions):
         x = keras.layers.Conv2D(filters, kernel_size,
@@ -122,7 +144,7 @@ def sparse_Mean_IOU(y_true, y_pred):
     iou = []
     pred_pixels = keras.backend.argmax(y_pred, axis=-1)
     for i in range(0, nb_classes): # exclude first label (background) and last label (void)
-        true_labels = keras.backend.equal(y_true[:,:,:,0], i)
+        true_labels = keras.backend.equal(y_true[:,:,0], i)
         pred_labels = keras.backend.equal(pred_pixels, i)
         inter = tf.dtypes.cast(true_labels & pred_labels, tf.int32)
         union = tf.dtypes.cast(true_labels | pred_labels, tf.int32)
@@ -135,7 +157,7 @@ def sparse_Mean_IOU(y_true, y_pred):
     return keras.backend.mean(iou)
 
 def run(train_set_X, train_set_y, depth=3, kernel_size=5, number_of_convolutions=3, filters=32, activation="relu", momentum=0.0,
-         learning_rate=0.01, drop_rate=0.5, n_classes=6, do_validate=True, valid_set_X=None, valid_set_y=None,
+         learning_rate=0.001, drop_rate=0.5, n_classes=6, do_validate=True, valid_set_X=None, valid_set_y=None,
         do_test=False, test_set_X=None, test_set_y=None, patience=5, batch_size=8, logfile="training.log"):
 
     # Check for consistent input
@@ -148,11 +170,11 @@ def run(train_set_X, train_set_y, depth=3, kernel_size=5, number_of_convolutions
                            number_of_convolutions=number_of_convolutions, filters=filters, activation=activation,
                            n_classes=n_classes)
     model = keras.models.Model(inputs=inputs, outputs=outputs)
-    optimizer = keras.optimizers.SGD(learning_rate=learning_rate, momentum=momentum)
+    optimizer = keras.optimizers.Adam(learning_rate=learning_rate)
     model.compile(optimizer, loss="sparse_categorical_crossentropy", metrics=[sparse_Mean_IOU])
     # Prepare callbacks
     csv_logger = keras.callbacks.CSVLogger(logfile)
-    early_stopping = keras.callbacks.EarlyStopping(monitor='val_sparse_Mean_IOU', patience=patience, mode='max')
+    early_stopping = keras.callbacks.EarlyStopping(monitor='val_loss', patience=patience, mode='min')
     if do_validate:
         history = model.fit(train_set_X, train_set_y, validation_data=(valid_set_X, valid_set_y), epochs=50,
                             batch_size=batch_size, callbacks=[csv_logger, early_stopping])
@@ -174,13 +196,16 @@ def run(train_set_X, train_set_y, depth=3, kernel_size=5, number_of_convolutions
 
 
 def main(depth=3, kernel_size=5, number_of_convolutions=3, filters=32, activation="relu", momentum=0.0,
-         learning_rate=0.01, drop_rate=0.5, n_classes=6, do_validate=True, do_test=False, patience=5, batch_size=8,
-         logfile="training.log"):
-    POINTER_FILE_PATH = r"D:\pointers\02"
+         learning_rate=0.001, drop_rate=0.5, n_classes=6, do_validate=True, do_test=False, patience=10, batch_size=8,
+         logfile="training.log", do_image_augment=True):
+    POINTER_FILE_PATH = r"D:\pointers\04"
     # Train set
     train_set_X, train_set_y = load_dataset(os.path.join(POINTER_FILE_PATH, "train.txt"))
     valid_set_X, valid_set_y = None, None
     test_set_X, test_set_y = None, None
+    if do_image_augment:
+        train_set_X = image_augmentation(train_set_X)
+        train_set_y = image_augmentation(train_set_y)
     if do_validate:
         valid_set_X, valid_set_y = load_dataset(os.path.join(POINTER_FILE_PATH, "valid.txt"))
     if do_test:
