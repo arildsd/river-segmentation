@@ -11,7 +11,7 @@ import random
 import pandas as pd
 
 """
-Look here for cheats:
+Look here for tips:
 https://pcjericks.github.io/py-gdalogr-cookbook/geometry.html
 """
 
@@ -58,8 +58,8 @@ class TrainingImage:
         self._write_array_to_raster(output_filepath, self.labels)
 
 
-def create_pointer_files(data_path, output_folder, train_size=0.6, valid_size=0.0, test_size=0.4, shuffle=True,
-                         sample_rate=1.0):
+def create_pointer_files(data_path, output_folder, train_size=0.6, valid_size=0.2, test_size=0.2, shuffle=True,
+                         sample_rate=1.0, file_ending="tif"):
     """
     Make txt files that point to images. Splitts into training, validation and test sets.
     :param output_folder:
@@ -74,7 +74,7 @@ def create_pointer_files(data_path, output_folder, train_size=0.6, valid_size=0.
     total = train_size + test_size + valid_size
     if total != 1:
         raise Exception(f"The sizes don't sum to one, they sum to {total}")
-    image_paths = glob.glob(os.path.join(data_path, "images", "*.tif"))
+    image_paths = glob.glob(os.path.join(data_path, "images", "*." + file_ending))
     if sample_rate < 1:
         image_paths = image_paths[:int(len(image_paths)*sample_rate)]
 
@@ -552,6 +552,6 @@ def main():
 
 
 if __name__ == '__main__':
-    pointer_dir = r"D:\pointers\04"
-    dest_dir = r"D:\tiny_images_csv\05"
-    convert_many_to_CSV(pointer_dir, dest_dir)
+    data_path = "~/tiny_images_csv/05"
+    dest_path = "~/pointers/05"
+    create_pointers_files(data_path, dest_path, file_ending="csv")

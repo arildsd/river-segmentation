@@ -195,7 +195,7 @@ def run(train_set_X, train_set_y, depth=3, kernel_size=5, number_of_convolutions
 def main(depth=3, kernel_size=5, number_of_convolutions=3, filters=32, activation="relu", momentum=0.0,
          learning_rate=0.001, drop_rate=0.5, n_classes=6, do_validate=True, do_test=False, patience=5, batch_size=8,
          logfile="training.log", do_image_augment=True):
-    POINTER_FILE_PATH = r"D:\pointers\04"
+    POINTER_FILE_PATH = r"~/pointers/05"
     # Train set
     train_set_X, train_set_y = load_dataset(os.path.join(POINTER_FILE_PATH, "train.txt"))
     valid_set_X, valid_set_y = None, None
