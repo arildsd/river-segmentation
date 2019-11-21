@@ -8,6 +8,7 @@ from osgeo import ogr
 from osgeo import osr
 import copy
 import random
+import pandas as pd
 
 """
 Look here for cheats:
@@ -96,7 +97,7 @@ def create_pointer_files(data_path, output_folder, train_size=0.6, valid_size=0.
         pairs = [image_paths[i] + ";" + label_paths[i] for i in range(start_index, len(image_paths))]
         f.write("\n".join(pairs))
 
-def is_quality_image(label_image, unknown_treshold=0.1):
+def is_quality_image(label_image, unknown_treshold=0.2):
     """
     Check that the image don't contain to much of the unknown class, as this is an indication of missing (wrong) labels
     :param label_image: A numpy matrix representing the label image
@@ -462,6 +463,41 @@ def load_polygons(folder_path):
     return id_poly_dict
 
 
+def convert_to_CSV(pointer_file_path, dest_dir):
+    """
+    Saves the images in pointer file that are saved in .tif format as .csv to remove need for Gdal for data loading
+
+    :param pointer_file_path:
+    :param dest_dir:
+    :return:
+    """
+    # Load pointer files
+    with open(pointer_file_path, "r") as f:
+        for line in f:
+            line = line.replace("\n", "")
+            image_path, label_path = line.split(";")
+            # Load images
+            image_ds = gdal.Open(image_path)
+            image = image_ds.GetRasterBand(1).ReadAsArray()
+            image_ds = None
+            label_ds = gdal.Open(label_path)
+            label = label_ds.GetRasterBand(1).ReadAsArray()
+            label_ds = None
+            # Write images as csv
+            pd.DataFrame(image).to_csv(os.path.join(dest_dir, "images",
+                                                    os.path.split(image_path)[-1].replace(".tif", ".csv")),
+                                       index=False, header=False)
+            pd.DataFrame(label).to_csv(os.path.join(dest_dir, "labels",
+                                                    os.path.split(label_path)[-1].replace(".tif", ".csv")),
+                                       index=False, header=False)
+
+def convert_many_to_CSV(pointer_file_dir, dest_dir):
+    pointer_files = glob.glob(os.path.join(pointer_file_dir, "*.txt"))
+    for pointer_file_path in pointer_files:
+        convert_to_CSV(pointer_file_path, dest_dir)
+    print(f"Converted all images in {pointer_files} to csv \nand saved them in {dest_dir}")
+
+
 def process_and_rasterize_raw_data():
     gdal.UseExceptions()
     # Define the paths to the aerial images
@@ -498,7 +534,7 @@ def main():
     # Define the river folders that will be processed
     RIVER_SUBFOLDER_NAMES = ["gaula_1963", "lærdal_1976"]
     # Destination root path
-    DEST_ROOT_PATH = r"D:\tiny_images\04"
+    DEST_ROOT_PATH = r"D:\tiny_images\05"
 
     # Create label rasters
     label_paths = []
@@ -516,6 +552,6 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
-    random.seed(54635)
-    #create_pointer_files(r"D:\tiny_images\03", r"D:\pointers\04", train_size=0.6, test_size=0.2, valid_size=0.2)
+    pointer_dir = r"D:\pointers\04"
+    dest_dir = r"D:\tiny_images_csv\05"
+    convert_many_to_CSV(pointer_dir, dest_dir)

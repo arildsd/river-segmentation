@@ -3,52 +3,42 @@ import tensorflow as tf
 import numpy as np
 import os
 import sys
-import gdal
-import data_processing
 import sklearn.metrics
+import pandas as pd
 
 
 def load_data(image_path, label_path):
     # Load image
-    image_ds = gdal.Open(image_path)
-    geo_transform = image_ds.GetGeoTransform()
-    projection = image_ds.GetProjection()
-    image_matrix = image_ds.GetRasterBand(1).ReadAsArray()
-    image_ds = None
+    image_matrix = pd.read_csv(image_path, header=None)
+    image_matrix = image_matrix.to_numpy(dtype=int)
+    # Load labels
+    label_matrix = pd.read_csv(label_path, header=False)
+    label_matrix = label_matrix.to_numpy(dtype=int)
 
-    # Load label
-    label_ds = gdal.Open(label_path)
-    if label_ds.GetGeoTransform() != geo_transform:
-        raise Exception(f"The geo transforms of image {image_path} and label {label_path} did not match")
-    label_matrix = label_ds.GetRasterBand(1).ReadAsArray()
-    label_ds = None
-
-    training_image = data_processing.TrainingImage(image_matrix, label_matrix, geo_transform,
-                                                   name=os.path.split(image_path)[-1], projection=projection)
-    return training_image
+    return image_matrix, label_matrix
 
 
 def load_dataset(pointer_file_path):
-    images = []
+    image_tuples = []
     # Load pointer files
     with open(pointer_file_path) as f:
         for line in f:
             line = line.replace("\n", "")
             image_path, label_path = line.split(";")
-            images.append(load_data(image_path, label_path))
+            image_tuples.append(load_data(image_path, label_path))
     # Make dataset
     # Training set
     data_set_X = None
     data_set_y = None
-    for i, image in enumerate(images):
+    for i, image_tuple in enumerate(image_tuples):
         if i == 0:
-            data_set_X = image.data
+            data_set_X = image_tuple[0]
             data_set_X = np.expand_dims(data_set_X, 0)
-            data_set_y = image.labels
+            data_set_y = image_tuple[1]
             data_set_y = np.expand_dims(data_set_y, 0)
         else:
-            data_set_X = np.concatenate([data_set_X, np.expand_dims(image.data, 0)], 0)
-            data_set_y = np.concatenate([data_set_y, np.expand_dims(image.labels, 0)], 0)
+            data_set_X = np.concatenate([data_set_X, np.expand_dims(image_tuple[0], 0)], 0)
+            data_set_y = np.concatenate([data_set_y, np.expand_dims(image_tuple[1], 0)], 0)
     # Add channel axis
     data_set_X = np.expand_dims(data_set_X, -1)
     data_set_y = np.expand_dims(data_set_y, -1)
