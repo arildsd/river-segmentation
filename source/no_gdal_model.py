@@ -5,7 +5,49 @@ import os
 import sys
 import sklearn.metrics
 import pandas as pd
+import random
+import glob
 
+
+def create_pointer_files(data_path, output_folder, train_size=0.6, valid_size=0.2, test_size=0.2, shuffle=True,
+                         sample_rate=1.0, file_ending="tif"):
+    """
+    DUPLICATED from data_processing to have access to this function without GDAL.
+    Make txt files that point to images. Splitts into training, validation and test sets.
+    :param output_folder:
+    :param random_seed:
+    :param data_path:
+    :param train_size:
+    :param valid_size:
+    :param test_size:
+    :param shuffle:
+    :return:
+    """
+    total = train_size + test_size + valid_size
+    if total != 1:
+        raise Exception(f"The sizes don't sum to one, they sum to {total}")
+    image_paths = glob.glob(os.path.join(data_path, "images", "*." + file_ending))
+    if sample_rate < 1:
+        image_paths = image_paths[:int(len(image_paths)*sample_rate)]
+
+    if shuffle:
+        random.shuffle(image_paths)
+    label_paths = [path.replace("images", "labels").replace("tiny_labels", "tiny_images") for path in image_paths]
+    os.makedirs(output_folder, exist_ok=True)
+    # Make training file
+    with open(os.path.join(output_folder, "train.txt"), "w+") as f:
+        pairs = [image_paths[i] + ";" + label_paths[i] for i in range(int(train_size*len(image_paths)))]
+        f.write("\n".join(pairs))
+    # Make validation file
+    with open(os.path.join(output_folder, "valid.txt"), "w+") as f:
+        end_index = int(train_size * len(image_paths)) + int(valid_size * len(image_paths))
+        pairs = [image_paths[i] + ";" + label_paths[i] for i in range(int(train_size * len(image_paths)), end_index)]
+        f.write("\n".join(pairs))
+    # Make test file
+    with open(os.path.join(output_folder, "test.txt"), "w+") as f:
+        start_index = int(train_size * len(image_paths)) + int(valid_size * len(image_paths))
+        pairs = [image_paths[i] + ";" + label_paths[i] for i in range(start_index, len(image_paths))]
+        f.write("\n".join(pairs))
 
 def load_data(image_path, label_path):
     # Load image
@@ -217,4 +259,8 @@ def main(depth=3, kernel_size=5, number_of_convolutions=3, filters=32, activatio
 
 
 if __name__ == '__main__':
-    main()
+    data_path = "~/tiny_images_csv/05"
+    dest_path = "~/pointers/05"
+    create_pointer_files(data_path, dest_path, file_ending="csv")
+
+    #main()

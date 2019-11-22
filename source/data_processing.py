@@ -554,4 +554,4 @@ def main():
 if __name__ == '__main__':
     data_path = "~/tiny_images_csv/05"
     dest_path = "~/pointers/05"
-    create_pointers_files(data_path, dest_path, file_ending="csv")
+    create_pointer_files(data_path, dest_path, file_ending="csv")
