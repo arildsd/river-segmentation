@@ -54,7 +54,7 @@ def load_data(image_path, label_path):
     image_matrix = pd.read_csv(image_path, header=None)
     image_matrix = image_matrix.to_numpy(dtype=int)
     # Load labels
-    label_matrix = pd.read_csv(label_path, header=False)
+    label_matrix = pd.read_csv(label_path, header=None)
     label_matrix = label_matrix.to_numpy(dtype=int)
 
     return image_matrix, label_matrix
@@ -237,7 +237,7 @@ def run(train_set_X, train_set_y, depth=3, kernel_size=5, number_of_convolutions
 def main(depth=3, kernel_size=5, number_of_convolutions=3, filters=32, activation="relu", momentum=0.0,
          learning_rate=0.001, drop_rate=0.5, n_classes=6, do_validate=True, do_test=False, patience=5, batch_size=8,
          logfile="training.log", do_image_augment=True):
-    POINTER_FILE_PATH = r"~/pointers/05"
+    POINTER_FILE_PATH = r"/home/arildsd/pointers/05"
     # Train set
     train_set_X, train_set_y = load_dataset(os.path.join(POINTER_FILE_PATH, "train.txt"))
     valid_set_X, valid_set_y = None, None
@@ -259,8 +259,5 @@ def main(depth=3, kernel_size=5, number_of_convolutions=3, filters=32, activatio
 
 
 if __name__ == '__main__':
-    data_path = "~/tiny_images_csv/05"
-    dest_path = "~/pointers/05"
-    create_pointer_files(data_path, dest_path, file_ending="csv")
-
-    #main()
+    main()
+    print("Ran the model! Done now")
