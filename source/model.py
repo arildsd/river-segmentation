@@ -133,13 +133,13 @@ def unet(input_shape, depth=3, kernel_size=5, number_of_convolutions=3, filters=
     for d in reversed(range(depth)):
         x = deconv_block(x, kernel_size=kernel_size,
                       number_of_convolutions=number_of_convolutions,
-                      filters=filters*(2**d),
+                      filters=2*filters*(2**d),
                       activation=activation,
                       drop_rate=drop_rate)
         x = tf.concat([x, skip_connections[d]], -1)
     x = conv_block(x, kernel_size=kernel_size,
                       number_of_convolutions=number_of_convolutions,
-                      filters=filters,
+                      filters=2*filters,
                       activation=activation,
                       drop_rate=drop_rate)
     x = keras.layers.Conv2D(n_classes, (1, 1), activation="softmax", padding="same")(x)
