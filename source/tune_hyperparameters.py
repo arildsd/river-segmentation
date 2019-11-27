@@ -9,6 +9,7 @@ from datetime import date
 def tune_parameters(train_set_X, train_set_y, valid_set_X, valid_set_y, param_dict, logfile_path, iterations=5):
     scores = []
     for i in range(iterations):
+        logfile_path = logfile_path.replace(".log", f"_{i}.log")
         hist = model.run(train_set_X, train_set_y, depth=param_dict["depth"], kernel_size=param_dict["kernel_size"],
                          number_of_convolutions=param_dict["number_of_convolutions"], filters=param_dict["filters"],
                          activation=param_dict["activation"], momentum=param_dict["momentum"],
@@ -45,19 +46,13 @@ if __name__ == '__main__':
 
     logfile_path = "../results"
 
-    param_dict_1 = {"depth": 3, "kernel_size": 5, "number_of_convolutions": 3, "filters":32, "activation": "relu",
+    param_dict_1 = {"depth": 4, "kernel_size": 3, "number_of_convolutions": 3, "filters":64, "activation": "relu",
                     "momentum": 0.0, "learning_rate": 0.001, "drop_rate": 0.0}
-    param_dict_2 = copy.deepcopy(param_dict_1)
-    param_dict_2["depth"] = 4
     param_dict_3 = copy.deepcopy(param_dict_1)
-    param_dict_3["depth"] = 4
     param_dict_3["drop_rate"] = 0.5
-    param_dict_4 = copy.deepcopy(param_dict_1)
-    param_dict_4["drop_rate"] = 0.5
     param_dict_5 = copy.deepcopy(param_dict_1)
-    param_dict_5["filters"] = 16
-    param_dict_6 = copy.deepcopy(param_dict_1)
-    param_dict_6["depth"] = 5
-    for i, param_dict in enumerate([param_dict_1, param_dict_2, param_dict_3, param_dict_4, param_dict_5, param_dict_6]):
+    param_dict_5["filters"] = 32
+
+    for i, param_dict in enumerate([param_dict_1, param_dict_3, param_dict_5]):
         tune_parameters(train_set_X, train_set_y, valid_set_X, valid_set_y, param_dict,
                         os.path.join(logfile_path, str(date.today()) + "_" + str(i) + ".log"))

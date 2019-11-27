@@ -58,6 +58,10 @@ def load_dataset(pointer_file_path):
     return data_set_X, data_set_y
 
 
+def balance_dataset(data):
+    pass
+
+
 def image_augmentation(data):
     """
     Takes the original image matrix and add rotated images and mirrored images (with rotations).
@@ -82,7 +86,8 @@ def image_augmentation(data):
 
 def conv_block(x, kernel_size=5, number_of_convolutions=3, filters=32, activation="relu", drop_rate=0.5):
     for i in range(number_of_convolutions):
-        x = keras.layers.Dropout(drop_rate)(x)
+        if drop_rate > 0:
+            x = keras.layers.Dropout(drop_rate)(x)
         x = keras.layers.Conv2D(filters, kernel_size,
                                 activation=activation,
                                 padding="same")(x)
@@ -91,11 +96,13 @@ def conv_block(x, kernel_size=5, number_of_convolutions=3, filters=32, activatio
 
 def deconv_block(x, kernel_size=5, number_of_convolutions=3, filters=32, activation="relu", drop_rate=0.5):
     for i in range(number_of_convolutions-1):
-        x = keras.layers.Dropout(drop_rate)(x)
+        if drop_rate > 0:
+            x = keras.layers.Dropout(drop_rate)(x)
         x = keras.layers.Conv2DTranspose(filters, kernel_size,
                                          activation=activation, padding="same")(x)
 
-    x = keras.layers.Dropout(drop_rate)(x)
+    if drop_rate > 0:
+        x = keras.layers.Dropout(drop_rate)(x)
     x = keras.layers.Conv2DTranspose(filters, kernel_size,
                                      activation=activation, padding="same",
                                      strides=(2, 2))(x)
@@ -133,13 +140,13 @@ def unet(input_shape, depth=3, kernel_size=5, number_of_convolutions=3, filters=
     for d in reversed(range(depth)):
         x = deconv_block(x, kernel_size=kernel_size,
                       number_of_convolutions=number_of_convolutions,
-                      filters=2*filters*(2**d),
+                      filters=filters*(2**d),
                       activation=activation,
                       drop_rate=drop_rate)
         x = tf.concat([x, skip_connections[d]], -1)
     x = conv_block(x, kernel_size=kernel_size,
                       number_of_convolutions=number_of_convolutions,
-                      filters=2*filters,
+                      filters=filters,
                       activation=activation,
                       drop_rate=drop_rate)
     x = keras.layers.Conv2D(n_classes, (1, 1), activation="softmax", padding="same")(x)
@@ -165,8 +172,8 @@ def sparse_Mean_IOU(y_true, y_pred):
 
 def run(train_set_X, train_set_y, depth=3, kernel_size=5, number_of_convolutions=3, filters=32, activation="relu", momentum=0.0,
          learning_rate=0.001, drop_rate=0.5, n_classes=6, do_validate=True, valid_set_X=None, valid_set_y=None,
-        do_test=False, test_set_X=None, test_set_y=None, patience=5, batch_size=8, logfile="training.log"):
-
+        do_test=False, test_set_X=None, test_set_y=None, patience=5, batch_size=4, logfile="training.log"):
+    tf.keras.backend.clear_session()
     # Check for consistent input
     if do_validate and (valid_set_y is None or valid_set_X is None):
         raise Exception("Do validate was true but no validation set was given")
@@ -182,6 +189,7 @@ def run(train_set_X, train_set_y, depth=3, kernel_size=5, number_of_convolutions
     # Prepare callbacks
     csv_logger = keras.callbacks.CSVLogger(logfile)
     early_stopping = keras.callbacks.EarlyStopping(monitor='val_loss', patience=patience, mode='min')
+
     if do_validate:
         history = model.fit(train_set_X, train_set_y, validation_data=(valid_set_X, valid_set_y), epochs=50,
                             batch_size=batch_size, callbacks=[csv_logger, early_stopping])
@@ -199,7 +207,8 @@ def run(train_set_X, train_set_y, depth=3, kernel_size=5, number_of_convolutions
         print(conf_mat)
     else:
         history = model.fit(train_set_X, train_set_y, epochs=50,
-                            batch_size=8, callbacks=[csv_logger, early_stopping])
+                            batch_size=batch_size, callbacks=[csv_logger, early_stopping])
+    return history
 
 
 def main(depth=3, kernel_size=5, number_of_convolutions=3, filters=32, activation="relu", momentum=0.0,
