@@ -15,6 +15,9 @@ def load_data(image_path, label_path):
     projection = image_ds.GetProjection()
     image_matrix = image_ds.GetRasterBand(1).ReadAsArray()
     image_ds = None
+    if np.isnan(np.min(image_matrix)):
+        # The image contains a NaN value and will therefore be discarded
+        return None
 
     # Load label
     label_ds = gdal.Open(label_path)
@@ -22,6 +25,9 @@ def load_data(image_path, label_path):
         raise Exception(f"The geo transforms of image {image_path} and label {label_path} did not match")
     label_matrix = label_ds.GetRasterBand(1).ReadAsArray()
     label_ds = None
+    if np.isnan(np.min(label_matrix)):
+        # The labels contains a NaN value and will therefore be discarded
+        return None
 
     training_image = data_processing.TrainingImage(image_matrix, label_matrix, geo_transform,
                                                    name=os.path.split(image_path)[-1], projection=projection)
@@ -35,7 +41,9 @@ def load_dataset(pointer_file_path):
         for line in f:
             line = line.replace("\n", "")
             image_path, label_path = line.split(";")
-            images.append(load_data(image_path, label_path))
+            image = load_data(image_path, label_path)
+            if image is not None:
+                images.append(image)
     # Make dataset
     # Training set
     data_set_X = None
@@ -188,11 +196,15 @@ def run(train_set_X, train_set_y, depth=3, kernel_size=5, number_of_convolutions
     model.compile(optimizer, loss="sparse_categorical_crossentropy", metrics=[sparse_Mean_IOU])
     # Prepare callbacks
     csv_logger = keras.callbacks.CSVLogger(logfile)
-    early_stopping = keras.callbacks.EarlyStopping(monitor='val_loss', patience=patience, mode='min')
+    early_stopping = keras.callbacks.EarlyStopping(monitor='val_sparse_Mean_IOU', patience=patience, mode='max')
+    checkpoint = keras.callbacks.ModelCheckpoint(logfile.replace(".log", ".hdf5"),
+                                                           monitor='val_sparse_Mean_IOU',
+                                                           verbose=0, save_best_only=True,
+                                                           save_weights_only=False, mode='max', period=1)
 
     if do_validate:
         history = model.fit(train_set_X, train_set_y, validation_data=(valid_set_X, valid_set_y), epochs=50,
-                            batch_size=batch_size, callbacks=[csv_logger, early_stopping])
+                            batch_size=batch_size, callbacks=[csv_logger, early_stopping, checkpoint])
         val_pred = model.predict(valid_set_X, batch_size=batch_size)
         val_pred = np.argmax(val_pred, axis=-1)
         conf_mat = sklearn.metrics.confusion_matrix(valid_set_y.flatten(), val_pred.flatten())
@@ -207,7 +219,7 @@ def run(train_set_X, train_set_y, depth=3, kernel_size=5, number_of_convolutions
         print(conf_mat)
     else:
         history = model.fit(train_set_X, train_set_y, epochs=50,
-                            batch_size=batch_size, callbacks=[csv_logger, early_stopping])
+                            batch_size=batch_size, callbacks=[csv_logger])
     return history
 
 

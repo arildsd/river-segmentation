@@ -33,26 +33,21 @@ def tune_parameters(train_set_X, train_set_y, valid_set_X, valid_set_y, param_di
 
 
 
-
-
 if __name__ == '__main__':
-    POINTER_FILE_PATH = r"D:\pointers\06"
+    POINTER_FILE_PATH = r"D:\pointers\03"
 
     # Train set
     train_set_X, train_set_y = model.load_dataset(os.path.join(POINTER_FILE_PATH, "train.txt"))
-    train_set_X = model.image_augmentation(train_set_X)
-    train_set_y = model.image_augmentation(train_set_y)
+    #train_set_X = model.image_augmentation(train_set_X)
+    #train_set_y = model.image_augmentation(train_set_y)
     valid_set_X, valid_set_y = model.load_dataset(os.path.join(POINTER_FILE_PATH, "valid.txt"))
 
     logfile_path = "../results"
 
-    param_dict_1 = {"depth": 4, "kernel_size": 3, "number_of_convolutions": 3, "filters":64, "activation": "relu",
+    param_dict_1 = {"depth": 3, "kernel_size": 5, "number_of_convolutions": 3, "filters":16, "activation": "relu",
                     "momentum": 0.0, "learning_rate": 0.001, "drop_rate": 0.0}
-    param_dict_3 = copy.deepcopy(param_dict_1)
-    param_dict_3["drop_rate"] = 0.5
-    param_dict_5 = copy.deepcopy(param_dict_1)
-    param_dict_5["filters"] = 32
 
-    for i, param_dict in enumerate([param_dict_1, param_dict_3, param_dict_5]):
-        tune_parameters(train_set_X, train_set_y, valid_set_X, valid_set_y, param_dict,
-                        os.path.join(logfile_path, str(date.today()) + "_" + str(i) + ".log"))
+
+
+    tune_parameters(train_set_X, train_set_y, valid_set_X, valid_set_y, param_dict_1,
+                        os.path.join(logfile_path, str(date.today()) + ".log"))
