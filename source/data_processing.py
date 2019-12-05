@@ -552,6 +552,6 @@ def main():
 
 
 if __name__ == '__main__':
-    pointer_dir = r"D:\pointers\06"
-    dest_dir = r"D:\tiny_images_csv\06"
-    convert_many_to_CSV(pointer_dir, dest_dir)
+    pointer_dir = r"D:\pointers\02"
+    image_dir = r"D:\tiny_images\02"
+    create_pointer_files(image_dir, pointer_dir)

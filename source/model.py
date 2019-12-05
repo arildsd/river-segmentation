@@ -192,7 +192,7 @@ def run(train_set_X, train_set_y, depth=3, kernel_size=5, number_of_convolutions
                            number_of_convolutions=number_of_convolutions, filters=filters, activation=activation,
                            n_classes=n_classes)
     model = keras.models.Model(inputs=inputs, outputs=outputs)
-    optimizer = keras.optimizers.Adam(learning_rate=learning_rate)
+    optimizer = keras.optimizers.SGD(learning_rate=learning_rate)
     model.compile(optimizer, loss="sparse_categorical_crossentropy", metrics=[sparse_Mean_IOU])
     # Prepare callbacks
     csv_logger = keras.callbacks.CSVLogger(logfile)

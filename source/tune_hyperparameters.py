@@ -31,10 +31,8 @@ def tune_parameters(train_set_X, train_set_y, valid_set_X, valid_set_y, param_di
         f.write(f"Min val miou: {min(scores)}")
 
 
-
-
 if __name__ == '__main__':
-    POINTER_FILE_PATH = r"D:\pointers\03"
+    POINTER_FILE_PATH = r"D:\pointers\02"
 
     # Train set
     train_set_X, train_set_y = model.load_dataset(os.path.join(POINTER_FILE_PATH, "train.txt"))
@@ -44,8 +42,8 @@ if __name__ == '__main__':
 
     logfile_path = "../results"
 
-    param_dict_1 = {"depth": 3, "kernel_size": 5, "number_of_convolutions": 3, "filters":16, "activation": "relu",
-                    "momentum": 0.0, "learning_rate": 0.001, "drop_rate": 0.0}
+    param_dict_1 = {"depth": 3, "kernel_size": 5, "number_of_convolutions": 3, "filters": 16, "activation": "relu",
+                    "momentum": 0.0, "learning_rate": 0.01, "drop_rate": 0.0}
 
 
 
