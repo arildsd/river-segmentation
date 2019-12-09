@@ -36,16 +36,19 @@ if __name__ == '__main__':
 
     # Train set
     train_set_X, train_set_y = model.load_dataset(os.path.join(POINTER_FILE_PATH, "train.txt"))
-    #train_set_X = model.image_augmentation(train_set_X)
-    #train_set_y = model.image_augmentation(train_set_y)
+    train_set_X = model.image_augmentation(train_set_X)
+    train_set_y = model.image_augmentation(train_set_y)
     valid_set_X, valid_set_y = model.load_dataset(os.path.join(POINTER_FILE_PATH, "valid.txt"))
 
     logfile_path = "../results"
 
     param_dict_1 = {"depth": 3, "kernel_size": 5, "number_of_convolutions": 3, "filters": 16, "activation": "relu",
-                    "momentum": 0.0, "learning_rate": 0.01, "drop_rate": 0.0}
-
-
+                    "momentum": 0.0, "learning_rate": 0.001, "drop_rate": 0.0}
+    param_dict_2 = {"depth": 4, "kernel_size": 5, "number_of_convolutions": 3, "filters": 32, "activation": "relu",
+                    "momentum": 0.0, "learning_rate": 0.001, "drop_rate": 0.0}
 
     tune_parameters(train_set_X, train_set_y, valid_set_X, valid_set_y, param_dict_1,
                         os.path.join(logfile_path, str(date.today()) + ".log"))
+
+    tune_parameters(train_set_X, train_set_y, valid_set_X, valid_set_y, param_dict_2,
+                        os.path.join(logfile_path, str(date.today()) + "_1.log"))

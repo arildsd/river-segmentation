@@ -106,7 +106,7 @@ def deconv_block(x, kernel_size=5, number_of_convolutions=3, filters=32, activat
     for i in range(number_of_convolutions-1):
         if drop_rate > 0:
             x = keras.layers.Dropout(drop_rate)(x)
-        x = keras.layers.Conv2DTranspose(filters, kernel_size,
+        x = keras.layers.Conv2D(filters, kernel_size,
                                          activation=activation, padding="same")(x)
 
     if drop_rate > 0:
@@ -192,15 +192,15 @@ def run(train_set_X, train_set_y, depth=3, kernel_size=5, number_of_convolutions
                            number_of_convolutions=number_of_convolutions, filters=filters, activation=activation,
                            n_classes=n_classes)
     model = keras.models.Model(inputs=inputs, outputs=outputs)
-    optimizer = keras.optimizers.SGD(learning_rate=learning_rate)
+    optimizer = keras.optimizers.Adam(learning_rate=learning_rate)
     model.compile(optimizer, loss="sparse_categorical_crossentropy", metrics=[sparse_Mean_IOU])
     # Prepare callbacks
     csv_logger = keras.callbacks.CSVLogger(logfile)
-    early_stopping = keras.callbacks.EarlyStopping(monitor='val_sparse_Mean_IOU', patience=patience, mode='max')
+    early_stopping = keras.callbacks.EarlyStopping(monitor='loss', patience=patience, mode='min')
     checkpoint = keras.callbacks.ModelCheckpoint(logfile.replace(".log", ".hdf5"),
-                                                           monitor='val_sparse_Mean_IOU',
+                                                           monitor='loss',
                                                            verbose=0, save_best_only=True,
-                                                           save_weights_only=False, mode='max', period=1)
+                                                           save_weights_only=False, mode='min', period=1)
 
     if do_validate:
         history = model.fit(train_set_X, train_set_y, validation_data=(valid_set_X, valid_set_y), epochs=50,
@@ -223,10 +223,10 @@ def run(train_set_X, train_set_y, depth=3, kernel_size=5, number_of_convolutions
     return history
 
 
-def main(depth=3, kernel_size=5, number_of_convolutions=3, filters=32, activation="relu", momentum=0.0,
-         learning_rate=0.001, drop_rate=0.5, n_classes=6, do_validate=True, do_test=False, patience=5, batch_size=8,
-         logfile="training.log", do_image_augment=True):
-    POINTER_FILE_PATH = r"D:\pointers\04"
+def main(depth=3, kernel_size=5, number_of_convolutions=1, filters=16, activation="relu", momentum=0.0,
+         learning_rate=0.001, drop_rate=0.0, n_classes=6, do_validate=True, do_test=False, patience=5, batch_size=4,
+         logfile="training_shallow.log", do_image_augment=True):
+    POINTER_FILE_PATH = r"D:\pointers\02"
     # Train set
     train_set_X, train_set_y = load_dataset(os.path.join(POINTER_FILE_PATH, "train.txt"))
     valid_set_X, valid_set_y = None, None
