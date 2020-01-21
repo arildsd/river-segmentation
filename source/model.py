@@ -66,9 +66,23 @@ def load_dataset(pointer_file_path):
     return data_set_X, data_set_y
 
 
-def balance_dataset(data):
-    pass
+def balance_dataset(data, n_classes=6):
+    """
+    Balance by oversampling
+    :param data: The complete
+    :param n_classes:
+    :return:
+    """
 
+    # Compute the class distribution
+    class_distribution = []
+    for i in range(n_classes):
+        is_class = data == i
+        count_class = np.sum(is_class)
+        class_distribution.append(count_class)
+    global_class_dist = np.array(class_distribution)
+    optimal_class_dist = np.zeros(n_classes) + (1/n_classes)
+    #for image in
 
 def image_augmentation(data):
     """
@@ -177,6 +191,7 @@ def sparse_Mean_IOU(y_true, y_pred):
     legal_labels = ~tf.math.is_nan(iou)
     iou = tf.gather(iou, indices=tf.where(legal_labels))
     return keras.backend.sum(iou)/6
+
 
 def run(train_set_X, train_set_y, depth=3, kernel_size=5, number_of_convolutions=3, filters=32, activation="relu", momentum=0.0,
          learning_rate=0.001, drop_rate=0.5, n_classes=6, do_validate=True, valid_set_X=None, valid_set_y=None,
