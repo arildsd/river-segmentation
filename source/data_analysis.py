@@ -5,6 +5,7 @@ import gdal
 import sys
 import os
 import glob
+import data_processing
 
 def get_class_distribution(image, n_classes=6):
     """
@@ -37,6 +38,37 @@ def analyse_labels(image_dir):
     total_distribution /= np.sum(total_distribution)
     print(total_distribution)
 
+def analyse_filtering(label_dir):
+    """
+    Calculate the images removed by the different filtering steps
+    :param label_dir: The path to the folder containing 6000x8000 images (raster labels)
+    :return:
+    """
+    label_paths = glob.glob(os.path.join(label_dir, "*.tif"))
+    mono_counter = 0
+    unknown_class_counter = 0
+    mono_unknown_class = 0
+    for path in label_paths:
+        label_ds = gdal.Open(path)
+        label_matrix = label_ds.GetRasterBand(1).ReadAsArray()
+        is_mono = False
+        if data_processing.is_mono_class(label_matrix):
+            mono_counter += 1
+            is_mono = True
+        is_unknown = False
+        if data_processing.is_above_unknown_threshold(label_matrix):
+            unknown_class_counter += 1
+            is_unknown = True
+        if is_mono and is_unknown:
+            mono_unknown_class += 1
+    print(f"Mono class images filtered away: {mono_counter}")
+    print(f"Images with more than 10% of the unknown class: {unknown_class_counter}")
+    print(f"Images with 100% of the unknown class: {mono_unknown_class}")
+
+
+
 if __name__ == '__main__':
-    IMAGE_DIR = r"D:\tiny_images\05\labels"
-    analyse_labels(IMAGE_DIR)
+    IMAGE_DIR = r"/media/kitkat/Seagate Expansion Drive/Master_project/labels/rasters/lærdal_1976"
+    print("Lærdal")
+    analyse_filtering(IMAGE_DIR)
+

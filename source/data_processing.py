@@ -97,15 +97,37 @@ def create_pointer_files(data_path, output_folder, train_size=0.6, valid_size=0.
         pairs = [image_paths[i] + ";" + label_paths[i] for i in range(start_index, len(image_paths))]
         f.write("\n".join(pairs))
 
-def is_quality_image(label_image, unknown_treshold=0.2):
+
+def is_above_unknown_threshold(label_image, unknown_threshold=0.1):
+    # Check that the amount of the unknown class
+    unknown_label_matrix = label_image == UNKNOWN_CLASS_ID
+    if np.sum(unknown_label_matrix) > unknown_threshold * unknown_label_matrix.shape[0] * unknown_label_matrix.shape[1]:
+        return True
+
+def is_mono_class(label_image):
+    for i in range(6):
+        is_mono_class = True
+        for e in np.nditer(label_image):
+            if e != i:
+                is_mono_class = False
+                break
+        # The image had only one class
+        if is_mono_class:
+            return False
+
+def is_quality_image(label_image, unknown_threshold=0.1):
     """
     Check that the image don't contain to much of the unknown class, as this is an indication of missing (wrong) labels
     :param label_image: A numpy matrix representing the label image
     :return: bool, true if the image passes the check, 0 otherwise
     """
-    unknown_label_matrix = label_image == UNKNOWN_CLASS_ID
-    if np.sum(unknown_label_matrix) > unknown_treshold*unknown_label_matrix.shape[0]*unknown_label_matrix.shape[1]:
+    # Discard images with more than a threshold of the unknown class
+    if is_above_unknown_threshold(label_image, unknown_threshold):
         return False
+    # Discard images with only one class
+    if is_mono_class(label_image):
+        return False
+
     return True
 
 
@@ -123,13 +145,6 @@ def divide_image(image_filepath, label_filepath, image_size=512):
         raise Exception(f"The geo transforms of image {image_filepath} and label {label_filepath} did not match")
     label_matrix = label_ds.GetRasterBand(1).ReadAsArray()
     label_ds = None
-
-    # Exclude the (big) image if it only contains water or gravel (or unknown)
-    is_class_2 = label_matrix == 2
-    is_class_3 = label_matrix == 3
-    is_class_4 = label_matrix == 4
-    if np.sum(is_class_2) + np.sum(is_class_3) + np.sum(is_class_4) == 0:
-        return []
 
     training_data = []
     # Make properly sized training data
@@ -528,13 +543,13 @@ def process_and_rasterize_raw_data():
 def main():
     gdal.UseExceptions()
     # Define the paths to the aerial images
-    ORTO_ROOT_FOLDER_PATH = r"D:\ortofoto"
+    ORTO_ROOT_FOLDER_PATH = r"/media/kitkat/Seagate Expansion Drive/Master_project/new_plane_fotos"
     # Define path to label rasters
-    LABEL_RASTER_ROOT_FOLDER = r"D:\labels\rasters"
+    LABEL_RASTER_ROOT_FOLDER = r"/media/kitkat/Seagate Expansion Drive/Master_project/labels/rasters"
     # Define the river folders that will be processed
     RIVER_SUBFOLDER_NAMES = ["gaula_1963", "lærdal_1976"]
     # Destination root path
-    DEST_ROOT_PATH = r"D:\tiny_images\05"
+    DEST_ROOT_PATH = r"/media/kitkat/Seagate Expansion Drive/Master_project/tiny_images"
 
     # Create label rasters
     label_paths = []
@@ -548,10 +563,8 @@ def main():
             name = os.path.split(l_path)[-1].replace("label", "")
             image_path = os.path.join(ORTO_ROOT_FOLDER_PATH, subfolder, name)
             image_paths.append(image_path)
-    divide_and_save_images(image_paths, label_paths, DEST_ROOT_PATH, image_size=256)
+    divide_and_save_images(image_paths, label_paths, DEST_ROOT_PATH, image_size=512)
 
 
 if __name__ == '__main__':
-    pointer_dir = r"D:\pointers\02"
-    image_dir = r"D:\tiny_images\02"
-    create_pointer_files(image_dir, pointer_dir)
+    main()
