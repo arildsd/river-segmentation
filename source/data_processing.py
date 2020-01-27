@@ -9,6 +9,7 @@ from osgeo import osr
 import copy
 import random
 import pandas as pd
+import shutil
 
 """
 Look here for tips:
@@ -103,6 +104,8 @@ def is_above_unknown_threshold(label_image, unknown_threshold=0.1):
     unknown_label_matrix = label_image == UNKNOWN_CLASS_ID
     if np.sum(unknown_label_matrix) > unknown_threshold * unknown_label_matrix.shape[0] * unknown_label_matrix.shape[1]:
         return True
+    else:
+        return False
 
 def is_mono_class(label_image):
     for i in range(6):
@@ -113,7 +116,8 @@ def is_mono_class(label_image):
                 break
         # The image had only one class
         if is_mono_class:
-            return False
+            return True
+    return False
 
 def is_quality_image(label_image, unknown_threshold=0.1):
     """
@@ -540,7 +544,67 @@ def process_and_rasterize_raw_data():
                                  os.path.join(DEST_ROOT_PATH, subfolder, "label" + os.path.split(path)[-1]))
     print("Done!")
 
-def main():
+def train_valid_test_split(source_folder, dest_folder, train=0.7, valid=0.1, test=0.2):
+    """
+    Moves the files from a single place into train, validation and test folders.
+    :param source_folder: The root folder of the data. (small images)
+    :param dest_folder: The root folder where the new data will be placed.
+    :param train: The size of the training set
+    :param valid: The size of the validation set
+    :param test: The size of the test set
+    :return: Nothing
+    """
+
+    # Check that train, valid and test add up to 1
+    if train + valid + test != 1:
+        raise ValueError(f"train, valid and test must add up to 1. They added up to {train + valid + test}")
+
+    os.makedirs(dest_folder, exist_ok=True)
+
+    # Get all the path endings
+    path_endings = glob.glob(os.path.join(source_folder, "labels", "*"))
+    path_endings = [os.path.split(p)[-1] for p in path_endings]
+    random.shuffle(path_endings)
+
+    # Split into train val and test
+    train_endings = path_endings[:int(train*len(path_endings))]
+    start_index = int(train*len(path_endings))
+    end_index = start_index + int(valid*len(path_endings))
+    val_endings = path_endings[start_index:end_index]
+    start_index = end_index
+    test_endings = path_endings[start_index:]
+
+    # Copy files to dest folder
+    os.makedirs(os.path.join(dest_folder, "train", "labels"))
+    os.makedirs(os.path.join(dest_folder, "train", "images"))
+    for path in train_endings:
+        shutil.copyfile(os.path.join(source_folder, "labels", path),
+                        os.path.join(dest_folder, "train", "labels", path))
+        shutil.copyfile(os.path.join(source_folder, "images", path),
+                        os.path.join(dest_folder, "train", "images", path))
+    os.makedirs(os.path.join(dest_folder, "val", "labels"))
+    os.makedirs(os.path.join(dest_folder, "val", "images"))
+    for path in val_endings:
+        shutil.copyfile(os.path.join(source_folder, "labels", path),
+                        os.path.join(dest_folder, "val", "labels", path))
+        shutil.copyfile(os.path.join(source_folder, "images", path),
+                        os.path.join(dest_folder, "val", "images", path))
+    os.makedirs(os.path.join(dest_folder, "test", "labels"))
+    os.makedirs(os.path.join(dest_folder, "test", "images"))
+    for path in test_endings:
+        shutil.copyfile(os.path.join(source_folder, "labels", path),
+                        os.path.join(dest_folder, "test", "labels", path))
+        shutil.copyfile(os.path.join(source_folder, "images", path),
+                        os.path.join(dest_folder, "test", "images", path))
+
+
+
+
+def divide_and_filter_main():
+    """
+    Function to actually run the division and filtering process.
+    :return: Nothing, it creates new files
+    """
     gdal.UseExceptions()
     # Define the paths to the aerial images
     ORTO_ROOT_FOLDER_PATH = r"/media/kitkat/Seagate Expansion Drive/Master_project/new_plane_fotos"
@@ -549,7 +613,7 @@ def main():
     # Define the river folders that will be processed
     RIVER_SUBFOLDER_NAMES = ["gaula_1963", "lærdal_1976"]
     # Destination root path
-    DEST_ROOT_PATH = r"/media/kitkat/Seagate Expansion Drive/Master_project/tiny_images"
+    DEST_ROOT_PATH = r"/media/kitkat/Seagate Expansion Drive/Master_project/tiny_images_unfiltered"
 
     # Create label rasters
     label_paths = []
@@ -566,5 +630,19 @@ def main():
     divide_and_save_images(image_paths, label_paths, DEST_ROOT_PATH, image_size=512)
 
 
+def train_valid_test_split_main():
+    """
+    Function to run the train, valid and test split and copy function.
+    :return: Nothing, creates new files
+    """
+
+    source_path = r"/media/kitkat/Seagate Expansion Drive/Master_project/tiny_images"
+    dest_path = r"/media/kitkat/Seagate Expansion Drive/Master_project/machine_learning_dataset"
+
+    train_valid_test_split(source_path, dest_path)
+
+
+
+
 if __name__ == '__main__':
-    main()
+    train_valid_test_split_main()

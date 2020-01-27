@@ -41,7 +41,7 @@ def analyse_labels(image_dir):
 def analyse_filtering(label_dir):
     """
     Calculate the images removed by the different filtering steps
-    :param label_dir: The path to the folder containing 6000x8000 images (raster labels)
+    :param label_dir: The path to the folder containing 512x512 images (raster labels)
     :return:
     """
     label_paths = glob.glob(os.path.join(label_dir, "*.tif"))
@@ -51,6 +51,7 @@ def analyse_filtering(label_dir):
     for path in label_paths:
         label_ds = gdal.Open(path)
         label_matrix = label_ds.GetRasterBand(1).ReadAsArray()
+        label_ds = None
         is_mono = False
         if data_processing.is_mono_class(label_matrix):
             mono_counter += 1
@@ -68,7 +69,6 @@ def analyse_filtering(label_dir):
 
 
 if __name__ == '__main__':
-    IMAGE_DIR = r"/media/kitkat/Seagate Expansion Drive/Master_project/labels/rasters/lærdal_1976"
-    print("Lærdal")
+    IMAGE_DIR = r"/media/kitkat/Seagate Expansion Drive/Master_project/tiny_images_unfiltered/labels"
     analyse_filtering(IMAGE_DIR)
 
