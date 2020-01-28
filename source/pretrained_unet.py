@@ -28,19 +28,22 @@ def vgg16_unet(image_size=512, n_max_filters=512, freeze="all"):
     else:
         freeze_until = 0
 
+    # Define input. It has 3 color channels since vgg is trained on a color dataset
+    input = tf.keras.Input(shape=(image_size, image_size, 3))
+
     # Load pre-trained model
-    vgg16 = tf.keras.applications.vgg16.VGG16(weights="imagenet", include_top=False)
+    vgg16 = tf.keras.applications.vgg16.VGG16(weights="imagenet",
+                                              include_top=False, input_tensor=input)
     for i, layer in enumerate(vgg16.layers):
         if i < freeze_until:
             layer.trainable = False
-    # Define input. It has 3 color channels since vgg is trained on a color dataset
-    input = tf.keras.Input(shape=(image_size, image_size, 3))
+
 
     skip_connections = []
 
     # Get first conv block
-    x = vgg16.layers[0](input)  # Input layer in vgg
-    x = vgg16.layers[1](x)  # Conv layer
+    #input = vgg16.layers[0]  # Input layer in vgg
+    x = vgg16.layers[1](input)  # Conv layer
     x = vgg16.layers[2](x)  # Conv layer
     skip_connections.append(x)
     x = vgg16.layers[3](x)  # Pooling layer
@@ -93,6 +96,7 @@ def vgg16_unet(image_size=512, n_max_filters=512, freeze="all"):
 
 
 def run():
+    tf.keras.backend.clear_session()
     run_name = "vgg16_freeze_all_no_augment"
     run_path = "/home/kitkat/PycharmProjects/river-segmentation/runs"
     date = str(datetime.datetime.now())

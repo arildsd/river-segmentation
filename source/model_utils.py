@@ -1,3 +1,4 @@
+import sklearn.metrics
 import tensorflow as tf
 import numpy as np
 import pandas as pd
@@ -137,3 +138,11 @@ def sparse_Mean_IOU(y_true, y_pred):
     legal_labels = ~tf.math.is_nan(iou)
     iou = tf.gather(iou, indices=tf.where(legal_labels))
     return tf.keras.backend.sum(iou)/6
+
+
+def evaluate_model(model, data, labels):
+    pred = model.predict(data, batch_size=1)
+    pred = np.argmax(pred, axis=-1)
+    conf_mat = sklearn.metrics.confusion_matrix(labels.flatten(), pred.flatten())
+    print(conf_mat)
+    return conf_mat
