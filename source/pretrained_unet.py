@@ -5,6 +5,7 @@ import glob
 import sys
 import os
 import random
+import datetime
 import model_utils
 
 def vgg16_unet(image_size=512, n_max_filters=512, freeze="all"):
@@ -92,6 +93,12 @@ def vgg16_unet(image_size=512, n_max_filters=512, freeze="all"):
 
 
 def run():
+    run_name = "vgg16_freeze_all_no_augment"
+    run_path = "/home/kitkat/PycharmProjects/river-segmentation/runs"
+    date = str(datetime.datetime.now())
+    run_path = os.path.join(run_path, f"{date}_{run_name}")
+    os.makedirs(run_path, exist_ok=True)
+
 
     # Load data
     # Training data
@@ -112,8 +119,22 @@ def run():
     model.compile(opt, loss="sparse_categorical_crossentropy",
                   metrics=["accuracy", model_utils.sparse_Mean_IOU])
 
-    model.fit(train_X, train_y, batch_size=1, epochs=10, validation_data=(val_X, val_y))
+    # Define callbacks
+    callbacks = []
+    callbacks.append(tf.keras.callbacks.EarlyStopping(patience=10))
 
+    checkpoint = tf.keras.callbacks.ModelCheckpoint(os.path.join(run_path, "model.hdf5"),
+                                                    monitor="val_loss", save_best_only=True)
+    callbacks.append(checkpoint)
+
+    tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=run_path, histogram_freq=1)
+    callbacks.append(tensorboard_callback)
+
+    csv_logger = tf.keras.callbacks.CSVLogger(os.path.join(run_path, "log.csv"))
+    callbacks.append(csv_logger)
+
+    # Train the model
+    model.fit(train_X, train_y, batch_size=1, epochs=50, validation_data=(val_X, val_y), callbacks=callbacks)
 
 
 if __name__ == '__main__':

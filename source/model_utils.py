@@ -99,7 +99,7 @@ def fake_colors(data):
 def image_augmentation(data):
     """
     Takes the original image matrix and add rotated images and mirrored images (with rotations).
-    This adds 7 additional images for each original image.
+    This adds 11 additional images for each original image.
     :param data:
     :return: An numpy array with the augmented images concatenated to the data array
     """
@@ -110,7 +110,12 @@ def image_augmentation(data):
     mirror_rot_90 = np.rot90(mirror, axes=(1, 2))
     mirror_rot_180 = np.rot90(mirror, k=2, axes=(1, 2))
     mirror_rot_270 = np.rot90(mirror, k=3, axes=(1, 2))
-    augments = [data, rot_90, rot_180, rot_270, mirror, mirror_rot_90, mirror_rot_180, mirror_rot_270]
+    mirror2 = np.flip(data, axis=2)
+    mirror2_rot_90 = np.rot90(mirror2, axes=(1, 2))
+    mirror2_rot_180 = np.rot90(mirror2, k=2, axes=(1, 2))
+    mirror2_rot_270 = np.rot90(mirror2, k=3, axes=(1, 2))
+    augments = [data, rot_90, rot_180, rot_270, mirror, mirror_rot_90, mirror_rot_180,
+                mirror_rot_270, mirror2, mirror2_rot_90, mirror2_rot_180, mirror2_rot_270]
     augmented_image_matrix = np.concatenate(augments, axis=0)
 
     return augmented_image_matrix
