@@ -95,38 +95,49 @@ def vgg16_unet(image_size=512, n_max_filters=512, freeze="all"):
     return model
 
 
-def run():
-    #tf.keras.backend.clear_session()
-    run_name = "vgg16_freeze_all_no_augment"
+def run(train_data_folder_path, val_data_folder_path, model_name="vgg16", freeze="all", image_augmentation=False):
+    tf.keras.backend.clear_session()
+
+    # Make run name based on parameters and timestamp
+    augment = "with" if image_augmentation else "no"
+    run_name = f"{model_name}_freeze_{freeze}_{augment}_augment"
     run_path = "/home/kitkat/PycharmProjects/river-segmentation/runs"
     date = str(datetime.datetime.now())
-    run_path = os.path.join(run_path, f"{date}_{run_name}")
+    run_path = os.path.join(run_path, f"{date}_{run_name}".replace(" ", "_"))
     os.makedirs(run_path, exist_ok=True)
 
     # Load data
     # Training data
-    data_folder_path = r"/media/kitkat/Seagate Expansion Drive/Master_project/machine_learning_dataset/train"
-    train = model_utils.load_dataset(data_folder_path)
+    train_data_folder_path = r"/media/kitkat/Seagate Expansion Drive/Master_project/machine_learning_dataset/train"
+    train = model_utils.load_dataset(train_data_folder_path)
     train_X, train_y = model_utils.convert_training_images_to_numpy_arrays(train)
     train_X = model_utils.fake_colors(train_X)
+    if image_augmentation:
+        train_X = model_utils.image_augmentation(train_X)
+        train_y = model_utils.image_augmentation(train_y)
 
     # Validation data
-    data_folder_path = r"/media/kitkat/Seagate Expansion Drive/Master_project/machine_learning_dataset/val"
-    val = model_utils.load_dataset(data_folder_path)
+    val_data_folder_path = r"/media/kitkat/Seagate Expansion Drive/Master_project/machine_learning_dataset/val"
+    val = model_utils.load_dataset(val_data_folder_path)
     val_X, val_y = model_utils.convert_training_images_to_numpy_arrays(val)
     val_X = model_utils.fake_colors(val_X)
 
+
     # Load and compile model
-    model = vgg16_unet(freeze="all")
+    if model_name.lower() == "vgg16":
+        model = vgg16_unet(freeze=freeze)
+    else:
+        # TODO: add more model options (DenseNet)
+        model = None
     opt = tf.keras.optimizers.Adam(learning_rate=0.0001)
     model.compile(opt, loss="sparse_categorical_crossentropy", metrics=["accuracy"])
 
     # Define callbacks
     callbacks = []
-    callbacks.append(tf.keras.callbacks.EarlyStopping(patience=10, monitor="val_miou"))
+    callbacks.append(tf.keras.callbacks.EarlyStopping(patience=10, monitor="val_loss"))
 
     checkpoint = tf.keras.callbacks.ModelCheckpoint(os.path.join(run_path, "model.hdf5"),
-                                                    monitor="val_miou", save_best_only=True, mode="max")
+                                                    monitor="val_loss", save_best_only=True)
     callbacks.append(checkpoint)
 
     tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=run_path, histogram_freq=1)
@@ -136,7 +147,7 @@ def run():
     callbacks.append(csv_logger)
 
     # Train the model
-    model.fit(train_X, train_y, batch_size=1, epochs=10, validation_data=(val_X, val_y), callbacks=callbacks)
+    model.fit(train_X, train_y, batch_size=1, epochs=100, validation_data=(val_X, val_y), callbacks=callbacks)
 
     # Print and save confusion matrix
     print("Confusion matrix on the validation data")
@@ -145,7 +156,16 @@ def run():
         f.write(str(conf_mat))
 
 if __name__ == '__main__':
-    run()
+    model_name = "vgg16"
+    freeze = "all"
+    image_augmentation = False
+    run_path = "/home/kitkat/PycharmProjects/river-segmentation/runs"
+
+    train_data_folder_path = r"/media/kitkat/Seagate Expansion Drive/Master_project/machine_learning_dataset/train"
+    val_data_folder_path = r"/media/kitkat/Seagate Expansion Drive/Master_project/machine_learning_dataset/val"
+
+    run(train_data_folder_path, val_data_folder_path, model_name=model_name, freeze=freeze,
+        image_augmentation=image_augmentation)
 
 
 
