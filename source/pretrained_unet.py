@@ -108,7 +108,6 @@ def run(train_data_folder_path, val_data_folder_path, model_name="vgg16", freeze
 
     # Load data
     # Training data
-    train_data_folder_path = r"/media/kitkat/Seagate Expansion Drive/Master_project/machine_learning_dataset/train"
     train = model_utils.load_dataset(train_data_folder_path)
     train_X, train_y = model_utils.convert_training_images_to_numpy_arrays(train)
     train_X = model_utils.fake_colors(train_X)
@@ -117,7 +116,6 @@ def run(train_data_folder_path, val_data_folder_path, model_name="vgg16", freeze
         train_y = model_utils.image_augmentation(train_y)
 
     # Validation data
-    val_data_folder_path = r"/media/kitkat/Seagate Expansion Drive/Master_project/machine_learning_dataset/val"
     val = model_utils.load_dataset(val_data_folder_path)
     val_X, val_y = model_utils.convert_training_images_to_numpy_arrays(val)
     val_X = model_utils.fake_colors(val_X)
