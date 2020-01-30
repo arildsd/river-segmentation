@@ -56,7 +56,7 @@ def load_dataset(data_folder_path):
     return data
 
 
-def convert_training_images_to_numpy_arrays(training_images):
+def convert_training_images_to_numpy_arrays(training_images, one_hot_encode=False):
     """
     Converts the images from a list of TrainingImage objects to a numpy array for data and labels.
     :param training_images: A list of TrainingImage objects.
@@ -80,6 +80,9 @@ def convert_training_images_to_numpy_arrays(training_images):
     data_set_y = np.expand_dims(data_set_y, -1)
     # Normalize images to the range [0, 1]
     data_set_X = data_set_X / (2 ** 8 - 1)  # 2**8 because of 8 bit encoding in original
+
+    if one_hot_encode:
+        data_set_y = tf.keras.utils.to_categorical(data_set_y, num_classes=6)
 
     return data_set_X, data_set_y
 
@@ -143,6 +146,24 @@ def sparse_Mean_IOU(y_true, y_pred):
 def evaluate_model(model, data, labels):
     pred = model.predict(data, batch_size=1)
     pred = np.argmax(pred, axis=-1)
+
+    labels = np.argmax(labels, axis=-1)  # Convert to categorical
+
     conf_mat = sklearn.metrics.confusion_matrix(labels.flatten(), pred.flatten())
     print(conf_mat)
     return conf_mat
+
+def load_model(model_file_path):
+    """
+    Loads the model at the file path. The model must include both architecture and weights
+    :param model_file_path: The path to the model. (.hdf5 file)
+    :return: The loaded model.
+    """
+    # Add the custom metric
+    dependencies = {"sparse_Mean_IOU": sparse_Mean_IOU}
+
+    # Load the model
+    model = tf.keras.models.load_model(model_file_path, custom_objects=dependencies)
+    return model
+
+

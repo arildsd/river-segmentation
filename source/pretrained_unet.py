@@ -96,13 +96,12 @@ def vgg16_unet(image_size=512, n_max_filters=512, freeze="all"):
 
 
 def run():
-    tf.keras.backend.clear_session()
+    #tf.keras.backend.clear_session()
     run_name = "vgg16_freeze_all_no_augment"
     run_path = "/home/kitkat/PycharmProjects/river-segmentation/runs"
     date = str(datetime.datetime.now())
     run_path = os.path.join(run_path, f"{date}_{run_name}")
     os.makedirs(run_path, exist_ok=True)
-
 
     # Load data
     # Training data
@@ -118,17 +117,16 @@ def run():
     val_X = model_utils.fake_colors(val_X)
 
     # Load and compile model
-    model = vgg16_unet()
+    model = vgg16_unet(freeze="all")
     opt = tf.keras.optimizers.Adam(learning_rate=0.0001)
-    model.compile(opt, loss="sparse_categorical_crossentropy",
-                  metrics=["accuracy", model_utils.sparse_Mean_IOU])
+    model.compile(opt, loss="sparse_categorical_crossentropy", metrics=["accuracy"])
 
     # Define callbacks
     callbacks = []
-    callbacks.append(tf.keras.callbacks.EarlyStopping(patience=10))
+    callbacks.append(tf.keras.callbacks.EarlyStopping(patience=10, monitor="val_miou"))
 
     checkpoint = tf.keras.callbacks.ModelCheckpoint(os.path.join(run_path, "model.hdf5"),
-                                                    monitor="val_loss", save_best_only=True)
+                                                    monitor="val_miou", save_best_only=True, mode="max")
     callbacks.append(checkpoint)
 
     tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=run_path, histogram_freq=1)
@@ -138,8 +136,13 @@ def run():
     callbacks.append(csv_logger)
 
     # Train the model
-    model.fit(train_X, train_y, batch_size=1, epochs=50, validation_data=(val_X, val_y), callbacks=callbacks)
+    model.fit(train_X, train_y, batch_size=1, epochs=100, validation_data=(val_X, val_y), callbacks=callbacks)
 
+    # Print and save confusion matrix
+    print("Confusion matrix on the validation data")
+    conf_mat = model_utils.evaluate_model(model, val_X, val_y)
+    with open(os.path.join(run_path, "conf_mat.txt"), "w+") as f:
+        f.write(str(conf_mat))
 
 if __name__ == '__main__':
     run()
