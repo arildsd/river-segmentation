@@ -136,7 +136,7 @@ def run():
     callbacks.append(csv_logger)
 
     # Train the model
-    model.fit(train_X, train_y, batch_size=1, epochs=100, validation_data=(val_X, val_y), callbacks=callbacks)
+    model.fit(train_X, train_y, batch_size=1, epochs=10, validation_data=(val_X, val_y), callbacks=callbacks)
 
     # Print and save confusion matrix
     print("Confusion matrix on the validation data")

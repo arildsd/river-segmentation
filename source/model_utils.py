@@ -147,8 +147,6 @@ def evaluate_model(model, data, labels):
     pred = model.predict(data, batch_size=1)
     pred = np.argmax(pred, axis=-1)
 
-    labels = np.argmax(labels, axis=-1)  # Convert to categorical
-
     conf_mat = sklearn.metrics.confusion_matrix(labels.flatten(), pred.flatten())
     print(conf_mat)
     return conf_mat
