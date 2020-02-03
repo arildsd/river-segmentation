@@ -162,7 +162,7 @@ def divide_image(image_filepath, label_filepath, image_size=512):
         for shape_1 in shape_1_indices:
             labels = label_matrix[shape_0:shape_0 + image_size, shape_1:shape_1 + image_size]
             # Check if the image has to much unknown
-            if not is_quality_image(label_matrix):
+            if not is_quality_image(labels):
                 continue
             data = image_matrix[shape_0:shape_0 + image_size, shape_1:shape_1 + image_size]
             new_geo_transform = list(geo_transform)
@@ -188,22 +188,20 @@ def divide_and_save_images(image_filepaths, label_filepaths, output_folder=None,
         raise Exception(f"The image filepaths and label filepaths must be in sync,"
                         f" but their lengths did not match. {len(image_filepaths)} != {len(label_filepaths)}")
     # Load the images
-    training_images = []
-    for i in range(len(image_filepaths)):
-        training_images += divide_image(image_filepaths[i], label_filepaths[i], image_size=image_size)
     # Write the images to disk
     if output_folder is not None:
         # Make output folders
         os.makedirs(os.path.join(output_folder, "images"), exist_ok=True)
         os.makedirs(os.path.join(output_folder, "labels"), exist_ok=True)
-        for image in training_images:
-            # Data
-            data_path = os.path.join(output_folder, "images", image.name + ".tif")
-            image.write_data_to_raster(data_path)
-            # Labels
-            label_path = os.path.join(output_folder, "labels", image.name + ".tif")
-            image.write_labels_to_raster(label_path)
-    return training_images
+        for i in range(len(image_filepaths)):
+            training_images = divide_image(image_filepaths[i], label_filepaths[i], image_size=image_size)
+            for image in training_images:
+                # Data
+                data_path = os.path.join(output_folder, "images", image.name + ".tif")
+                image.write_data_to_raster(data_path)
+                # Labels
+                label_path = os.path.join(output_folder, "labels", image.name + ".tif")
+                image.write_labels_to_raster(label_path)
 
 
 def find_intersecting_polys(geometry, polys):
@@ -613,7 +611,7 @@ def divide_and_filter_main():
     # Define the river folders that will be processed
     RIVER_SUBFOLDER_NAMES = ["gaula_1963", "lærdal_1976"]
     # Destination root path
-    DEST_ROOT_PATH = r"/media/kitkat/Seagate Expansion Drive/Master_project/tiny_images_unfiltered"
+    DEST_ROOT_PATH = r"/media/kitkat/Seagate Expansion Drive/Master_project/tiny_images_2"
 
     # Create label rasters
     label_paths = []
@@ -636,12 +634,10 @@ def train_valid_test_split_main():
     :return: Nothing, creates new files
     """
 
-    source_path = r"/media/kitkat/Seagate Expansion Drive/Master_project/tiny_images"
-    dest_path = r"/media/kitkat/Seagate Expansion Drive/Master_project/machine_learning_dataset"
+    source_path = r"/media/kitkat/Seagate Expansion Drive/Master_project/tiny_images_2"
+    dest_path = r"/media/kitkat/Seagate Expansion Drive/Master_project/machine_learning_dataset_2"
 
     train_valid_test_split(source_path, dest_path)
-
-
 
 
 if __name__ == '__main__':

@@ -1,8 +1,9 @@
 import gdal
 import tensorflow as tf
 import model_utils
-from model_utils import sparse_Mean_IOU
 import numpy as np
+import glob
+import os
 
 
 
@@ -19,7 +20,7 @@ def evaluate_dataset_main():
     val_X = model_utils.fake_colors(val_X)
 
 
-    model_file_path = r"/home/kitkat/PycharmProjects/river-segmentation/runs/2020-01-28 16:55:47.858991_vgg16_freeze_all_no_augment/model.hdf5"
+    model_file_path = r"/home/kitkat/Master_project/runs/2020-01-30_17:08:11.173698_vgg16_freeze_first_no_augment/model.hdf5"
     model = model_utils.load_model(model_file_path)
 
     model_utils.evaluate_model(model, val_X, val_y)
@@ -43,19 +44,44 @@ def predict_on_image(model, image_path):
 
     training_image.labels = prediction
 
+    return training_image
+
+def predict_on_images(model, image_folder):
+    paths = glob.glob(os.path.join(image_folder, "*.tif"))
+    predictions = []
+    for path in paths:
+        predictions.append(predict_on_image(model, path))
+
+    return predictions
 
 
+def predict_on_images_main():
+    model_path = r"/home/kitkat/Master_project/runs/2020-01-31_12:29:39.620844_vgg16_freeze_first_with_augment/model.hdf5"
+    image_folder = r"/media/kitkat/Seagate Expansion Drive/Master_project/machine_learning_dataset/val/images"
+    output_folder = r"/home/kitkat/Master_project/runs/2020-01-31_12:29:39.620844_vgg16_freeze_first_with_augment/predictions"
+
+    model = model_utils.load_model(model_path)
+    predictions = predict_on_images(model, image_folder)
+    for pred in predictions:
+        pred.write_labels_to_raster(os.path.join(output_folder, pred.name))
+
+
+
+def predict_on_image_main():
+    model_path = r"/home/kitkat/Master_project/runs/2020-01-31_12:29:39.620844_vgg16_freeze_first_with_augment/model.hdf5"
+    image_path = r"/media/kitkat/Seagate Expansion Drive/Master_project/machine_learning_dataset/val/images/33-2-462-208-23_n_2048_e_512.tif"
+    output_path = r"/home/kitkat/Master_project/runs/2020-01-31_12:29:39.620844_vgg16_freeze_first_with_augment/predictions/33-2-462-208-23_n_2048_e_512.tif"
+
+    model = model_utils.load_model(model_path)
+    image = predict_on_image(model, image_path)
+
+    image.write_labels_to_raster(output_path)
 
 
 if __name__ == '__main__':
     tf.keras.backend.clear_session()
 
-    model_file_path = r"/home/kitkat/PycharmProjects/river-segmentation/runs/2020-01-28 16:55:47.858991_vgg16_freeze_all_no_augment/model.hdf5"
-    model = model_utils.load_model(model_file_path)
-
-    image_file_path = r"/media/kitkat/Seagate Expansion Drive/Master_project/machine_learning_dataset/val/images/33-2-462-209-11_n_2560_e_2048.tif"
-
-    predict_on_image(model, image_file_path)
+    predict_on_images_main()
 
 
 

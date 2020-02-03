@@ -125,31 +125,36 @@ def image_augmentation(data):
     return augmented_image_matrix
 
 
-def sparse_Mean_IOU(y_true, y_pred):
-    nb_classes = tf.keras.backend.int_shape(y_pred)[-1]
-    iou = []
-    pred_pixels = tf.keras.backend.argmax(y_pred, axis=-1)
-    for i in range(0, nb_classes):
-        true_labels = tf.keras.backend.equal(y_true[:,:,0], i)
-        pred_labels = tf.keras.backend.equal(pred_pixels, i)
-        inter = tf.dtypes.cast(true_labels & pred_labels, tf.int32)
-        union = tf.dtypes.cast(true_labels | pred_labels, tf.int32)
-        legal_batches = tf.keras.backend.sum(tf.dtypes.cast(true_labels, tf.int32), axis=1)>0
-        ious = tf.keras.backend.sum(inter, axis=1)/tf.keras.backend.sum(union, axis=1)
-        iou.append(tf.keras.backend.mean(tf.gather(ious, indices=tf.where(legal_batches)))) # returns average IoU of the same objects
-    iou = tf.stack(iou)
-    legal_labels = ~tf.math.is_nan(iou)
-    iou = tf.gather(iou, indices=tf.where(legal_labels))
-    return tf.keras.backend.sum(iou)/6
+def miou(y_true, y_pred, num_classes=6):
+    """
+    The intersection over union metric. Implemented with numpy.
+    :param y_true: A flat numpy array with the true classes.
+    :param y_pred: A flat numpy array with the predicted classes.
+    :param num_classes: The number of classes.
+    :return: The mean intersection over union.
+    """
+    ious = []
+    for i in range(num_classes):
+        y_true_class = y_true == i
+        y_pred_class = y_pred == i
+        intersection = np.sum(np.logical_and(y_true_class, y_pred_class))
+        union = np.sum(np.logical_or(y_true_class, y_pred_class))
+        ious.append(intersection/union)
+    return np.sum(ious)/num_classes
 
 
 def evaluate_model(model, data, labels):
     pred = model.predict(data, batch_size=1)
     pred = np.argmax(pred, axis=-1)
 
-    conf_mat = sklearn.metrics.confusion_matrix(labels.flatten(), pred.flatten())
+    f_labels = labels.flatten()
+    f_pred = pred.flatten()
+
+    conf_mat = sklearn.metrics.confusion_matrix(f_labels, f_pred)
+    mean_intersection_over_union = miou(f_labels, f_pred)
     print(conf_mat)
-    return conf_mat
+    print(f"miou: {mean_intersection_over_union}")
+    return conf_mat, mean_intersection_over_union
 
 def load_model(model_file_path):
     """
@@ -157,11 +162,9 @@ def load_model(model_file_path):
     :param model_file_path: The path to the model. (.hdf5 file)
     :return: The loaded model.
     """
-    # Add the custom metric
-    dependencies = {"sparse_Mean_IOU": sparse_Mean_IOU}
 
     # Load the model
-    model = tf.keras.models.load_model(model_file_path, custom_objects=dependencies)
+    model = tf.keras.models.load_model(model_file_path)
     return model
 
 

@@ -69,6 +69,6 @@ def analyse_filtering(label_dir):
 
 
 if __name__ == '__main__':
-    IMAGE_DIR = r"/media/kitkat/Seagate Expansion Drive/Master_project/tiny_images_unfiltered/labels"
-    analyse_filtering(IMAGE_DIR)
+    IMAGE_DIR = r"/media/kitkat/Seagate Expansion Drive/Master_project/tiny_images_2/labels"
+    analyse_labels(IMAGE_DIR)
 
