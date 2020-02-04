@@ -8,7 +8,7 @@ import random
 import datetime
 import model_utils
 
-def vgg16_unet(image_size=512, n_max_filters=512, freeze="all"):
+def vgg16_unet(image_size=512, n_max_filters=512, freeze="all", context_mode=False):
     """
     A unet model that uses a pre-trained VGG16 CNN as the encoder part.
     :param image_size: The size of the input images
@@ -88,6 +88,9 @@ def vgg16_unet(image_size=512, n_max_filters=512, freeze="all"):
     # Last conv layers
     x = tf.keras.layers.Conv2D(64, kernel_size=(3, 3), padding="same", activation="relu")(x)
     x = tf.keras.layers.Conv2D(64, kernel_size=(3, 3), padding="same", activation="relu")(x)
+    if context_mode:
+        # Crop to only predict on the middle pixels
+        x = tf.keras.layers.Cropping2D(cropping=image_size//4)(x)
     x = tf.keras.layers.Conv2D(6, kernel_size=(3, 3), padding="same", activation="softmax")(x)
 
     model = tf.keras.Model(inputs=input, outputs=x)
@@ -95,7 +98,8 @@ def vgg16_unet(image_size=512, n_max_filters=512, freeze="all"):
     return model
 
 
-def run(train_data_folder_path, val_data_folder_path, model_name="vgg16", freeze="all", image_augmentation=False):
+def run(train_data_folder_path, val_data_folder_path, model_name="vgg16", freeze="all", image_augmentation=False,
+        context_mode=False):
     tf.keras.backend.clear_session()
 
     # Make run name based on parameters and timestamp
@@ -123,7 +127,7 @@ def run(train_data_folder_path, val_data_folder_path, model_name="vgg16", freeze
 
     # Load and compile model
     if model_name.lower() == "vgg16":
-        model = vgg16_unet(freeze=freeze)
+        model = vgg16_unet(freeze=freeze, context_mode=context_mode)
     else:
         # TODO: add more model options (DenseNet)
         model = None
