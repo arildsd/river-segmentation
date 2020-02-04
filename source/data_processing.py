@@ -24,20 +24,18 @@ class TrainingImage:
     A class for containing data (and metadata) for a training image.
     """
 
-    def __init__(self, data, labels, geo_transform, name="", projection=None):
+    def __init__(self, data, labels, geo_transform, name="", projection=None, label_geo_transform=None):
         if projection is None:
             projection = gdal.osr.SpatialReference()
             projection.ImportFromEPSG(25833)
         self.projection = projection
         self.geo_transform = geo_transform
-        if data.shape != labels.shape:
-            raise Exception(f"The shape of the data ({data.shape}) and labels ({labels.shape}) did not match")
+        self.label_geo_transform = label_geo_transform
         self.data = data
         self.labels = labels
-        self.shape = data.shape
         self.name = name
 
-    def _write_array_to_raster(self, output_filepath, array):
+    def _write_array_to_raster(self, output_filepath, array, geo_transform):
         """
         Writes the given array to a raster image
         :param output_filepath: The output file
@@ -45,18 +43,22 @@ class TrainingImage:
         """
 
         driver = gdal.GetDriverByName("GTiff")
-        raster = driver.Create(output_filepath, self.shape[1], self.shape[0],
+        raster = driver.Create(output_filepath, array.shape[1], array.shape[0],
                       1, gdal.GDT_Int16)
-        raster.SetGeoTransform(self.geo_transform)
+        raster.SetGeoTransform(geo_transform)
         raster.SetProjection(self.projection)
         raster.GetRasterBand(1).WriteArray(array)
         raster = None
 
     def write_data_to_raster(self, output_filepath):
-        self._write_array_to_raster(output_filepath, self.data)
+        self._write_array_to_raster(output_filepath, self.data, self.geo_transform)
 
     def write_labels_to_raster(self, output_filepath):
-        self._write_array_to_raster(output_filepath, self.labels)
+        if self.label_geo_transform is not None:
+            geo_transform = self.label_geo_transform
+        else:
+            geo_transform = self.geo_transform
+        self._write_array_to_raster(output_filepath, self.labels, geo_transform)
 
 
 def create_pointer_files(data_path, output_folder, train_size=0.6, valid_size=0.2, test_size=0.2, shuffle=True,
@@ -135,7 +137,7 @@ def is_quality_image(label_image, unknown_threshold=0.1):
     return True
 
 
-def divide_image(image_filepath, label_filepath, image_size=512):
+def divide_image(image_filepath, label_filepath, image_size=512, do_overlap_and_crop=False):
     # Load image
     image_ds = gdal.Open(image_filepath)
     geo_transform = image_ds.GetGeoTransform()
@@ -153,27 +155,42 @@ def divide_image(image_filepath, label_filepath, image_size=512):
     training_data = []
     # Make properly sized training data
     # Make sure that the whole image is covered, even if the last one has to overlap
-    shape_0_indices = list(range(0, image_matrix.shape[0], image_size))
-    shape_0_indices[-1] = image_matrix.shape[0] - image_size
-    shape_1_indices = list(range(0, image_matrix.shape[1], image_size))
-    shape_1_indices[-1] = image_matrix.shape[1] - image_size
+    if do_overlap_and_crop:
+        shape_0_indices = list(range(image_size // 4, image_matrix.shape[0], image_size // 4))[:-1]
+        shape_1_indices = list(range(image_size // 4, image_matrix.shape[1], image_size // 4))[:-1]
+    else:
+        shape_0_indices = list(range(0, image_matrix.shape[0], image_size))
+        shape_0_indices[-1] = image_matrix.shape[0] - image_size
+        shape_1_indices = list(range(0, image_matrix.shape[1], image_size))
+        shape_1_indices[-1] = image_matrix.shape[1] - image_size
     # Split the images
     for shape_0 in shape_0_indices:
         for shape_1 in shape_1_indices:
-            labels = label_matrix[shape_0:shape_0 + image_size, shape_1:shape_1 + image_size]
+            if do_overlap_and_crop:
+                # Extract labels for the center of the image
+                labels = label_matrix[shape_0 + image_size // 4:shape_0 + image_size - image_size // 4,
+                         shape_1 + image_size // 4:shape_1 + image_size - image_size // 4]
+            else:
+                labels = label_matrix[shape_0:shape_0 + image_size, shape_1:shape_1 + image_size]
             # Check if the image has to much unknown
             if not is_quality_image(labels):
                 continue
+            label_geo_transform = list(geo_transform)
+            label_geo_transform[0] += (shape_1 + image_size//4) * geo_transform[1]  # East
+            label_geo_transform[3] += (shape_0 + image_size//4) * geo_transform[5]  # North
             data = image_matrix[shape_0:shape_0 + image_size, shape_1:shape_1 + image_size]
-            new_geo_transform = list(geo_transform)
-            new_geo_transform[0] += shape_1 * geo_transform[1]  # East
-            new_geo_transform[3] += shape_0 * geo_transform[5]  # North
+            new_data_geo_transform = list(geo_transform)
+            new_data_geo_transform[0] += shape_1 * geo_transform[1]  # East
+            new_data_geo_transform[3] += shape_0 * geo_transform[5]  # North
+
             name = os.path.split(image_filepath)[-1].replace(".tif", "") + f"_n_{shape_0}_e_{shape_1}"
-            training_data.append(TrainingImage(data, labels, new_geo_transform, name=name, projection=projection))
+            training_data.append(TrainingImage(data, labels, new_data_geo_transform, name=name, projection=projection,
+                                               label_geo_transform=label_geo_transform))
     return training_data
 
 
-def divide_and_save_images(image_filepaths, label_filepaths, output_folder=None, image_size=512):
+def divide_and_save_images(image_filepaths, label_filepaths, output_folder=None, image_size=512,
+                           do_overlap_and_crop=False):
     """
     This function takes big images and splits them into smaller images and saves them to disk
     :param image_filepaths: A list of filepaths to the images that will be loaded
@@ -194,7 +211,8 @@ def divide_and_save_images(image_filepaths, label_filepaths, output_folder=None,
         os.makedirs(os.path.join(output_folder, "images"), exist_ok=True)
         os.makedirs(os.path.join(output_folder, "labels"), exist_ok=True)
         for i in range(len(image_filepaths)):
-            training_images = divide_image(image_filepaths[i], label_filepaths[i], image_size=image_size)
+            training_images = divide_image(image_filepaths[i], label_filepaths[i], image_size=image_size,
+                                           do_overlap_and_crop=do_overlap_and_crop)
             for image in training_images:
                 # Data
                 data_path = os.path.join(output_folder, "images", image.name + ".tif")
@@ -202,6 +220,8 @@ def divide_and_save_images(image_filepaths, label_filepaths, output_folder=None,
                 # Labels
                 label_path = os.path.join(output_folder, "labels", image.name + ".tif")
                 image.write_labels_to_raster(label_path)
+
+
 
 
 def find_intersecting_polys(geometry, polys):
@@ -611,7 +631,7 @@ def divide_and_filter_main():
     # Define the river folders that will be processed
     RIVER_SUBFOLDER_NAMES = ["gaula_1963", "lærdal_1976"]
     # Destination root path
-    DEST_ROOT_PATH = r"/media/kitkat/Seagate Expansion Drive/Master_project/tiny_images_2"
+    DEST_ROOT_PATH = r"/media/kitkat/Seagate Expansion Drive/Master_project/tiny_images_3"
 
     # Create label rasters
     label_paths = []
@@ -625,7 +645,7 @@ def divide_and_filter_main():
             name = os.path.split(l_path)[-1].replace("label", "")
             image_path = os.path.join(ORTO_ROOT_FOLDER_PATH, subfolder, name)
             image_paths.append(image_path)
-    divide_and_save_images(image_paths, label_paths, DEST_ROOT_PATH, image_size=512)
+    divide_and_save_images(image_paths, label_paths, DEST_ROOT_PATH, image_size=512, do_overlap_and_crop=True)
 
 
 def train_valid_test_split_main():
@@ -641,4 +661,4 @@ def train_valid_test_split_main():
 
 
 if __name__ == '__main__':
-    train_valid_test_split_main()
+    divide_and_filter_main()

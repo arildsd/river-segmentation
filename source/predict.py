@@ -15,15 +15,20 @@ def evaluate_dataset_main():
 
     # Validation data
     data_folder_path = r"/media/kitkat/Seagate Expansion Drive/Master_project/machine_learning_dataset/val"
-    val = model_utils.load_dataset(data_folder_path)
-    val_X, val_y = model_utils.convert_training_images_to_numpy_arrays(val)
-    val_X = model_utils.fake_colors(val_X)
-
 
     model_file_path = r"/home/kitkat/Master_project/runs/2020-01-30_17:08:11.173698_vgg16_freeze_first_no_augment/model.hdf5"
     model = model_utils.load_model(model_file_path)
 
+    evaluate_dataset(model, data_folder_path)
+
+
+def evaluate_dataset(model, data_folder_path):
+    val = model_utils.load_dataset(data_folder_path)
+    val_X, val_y = model_utils.convert_training_images_to_numpy_arrays(val)
+    val_X = model_utils.fake_colors(val_X)
+
     model_utils.evaluate_model(model, val_X, val_y)
+
 
 def predict_on_image(model, image_path):
     """
@@ -46,6 +51,7 @@ def predict_on_image(model, image_path):
 
     return training_image
 
+
 def predict_on_images(model, image_folder):
     paths = glob.glob(os.path.join(image_folder, "*.tif"))
     predictions = []
@@ -56,15 +62,15 @@ def predict_on_images(model, image_folder):
 
 
 def predict_on_images_main():
-    model_path = r"/home/kitkat/Master_project/runs/2020-01-31_12:29:39.620844_vgg16_freeze_first_with_augment/model.hdf5"
-    image_folder = r"/media/kitkat/Seagate Expansion Drive/Master_project/machine_learning_dataset/val/images"
-    output_folder = r"/home/kitkat/Master_project/runs/2020-01-31_12:29:39.620844_vgg16_freeze_first_with_augment/predictions"
+    model_path = r"/home/kitkat/Master_project/runs/2020-02-03_16:26:13.134402_vgg16_freeze_all_with_augment/model.hdf5"
+    image_folder = r"/media/kitkat/Seagate Expansion Drive/Master_project/machine_learning_dataset_2/val/images"
+    output_folder = r"/home/kitkat/Master_project/runs/2020-02-03_16:26:13.134402_vgg16_freeze_all_with_augment/predictions"
 
     model = model_utils.load_model(model_path)
     predictions = predict_on_images(model, image_folder)
+    os.makedirs(output_folder, exist_ok=True)
     for pred in predictions:
         pred.write_labels_to_raster(os.path.join(output_folder, pred.name))
-
 
 
 def predict_on_image_main():
@@ -78,10 +84,28 @@ def predict_on_image_main():
     image.write_labels_to_raster(output_path)
 
 
+def predict_and_evaluate(model_path, data_folder, output_folder):
+    model = model_utils.load_model(model_path)
+
+    predictions = predict_on_images(model, os.path.join(data_folder, "images"))
+    os.makedirs(output_folder, exist_ok=True)
+    for pred in predictions:
+        pred.write_labels_to_raster(os.path.join(output_folder, pred.name))
+
+    evaluate_dataset(model, data_folder)
+
+
+def predict_and_evaluate_main():
+    model_path = r"/home/kitkat/Master_project/runs/2020-02-02_23:47:09.414922_vgg16_freeze_all_no_augment/model.hdf5"
+    data_folder = r"/media/kitkat/Seagate Expansion Drive/Master_project/machine_learning_dataset_2/val"
+    output_folder = r"/home/kitkat/Master_project/runs/2020-02-02_23:47:09.414922_vgg16_freeze_all_no_augment/predictions"
+
+    predict_and_evaluate(model_path, data_folder, output_folder)
+
 if __name__ == '__main__':
     tf.keras.backend.clear_session()
 
-    predict_on_images_main()
+    predict_and_evaluate_main()
 
 
 
