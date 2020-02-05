@@ -67,8 +67,19 @@ def analyse_filtering(label_dir):
     print(f"Images with 100% of the unknown class: {mono_unknown_class}")
 
 
+def count_big_images(image_folder):
+    paths = glob.glob(os.path.join(image_folder, "*.tif"))
+    paths = [os.path.split(path)[-1] for path in paths]
+    # The first 15 characters of the path represents the big image
+    path_beginnings = [path[:15] for path in paths]
+    path_beginnings = list(set(path_beginnings))  # Remove duplicates
+    print(f"There are {len(path_beginnings)} big images in the image folder")
+    print(path_beginnings)
+
+
+
 
 if __name__ == '__main__':
-    IMAGE_DIR = r"/media/kitkat/Seagate Expansion Drive/Master_project/tiny_images_2/labels"
-    analyse_labels(IMAGE_DIR)
+    IMAGE_DIR = r"/media/kitkat/Seagate Expansion Drive/Master_project/tiny_images_3/images"
+    count_big_images(IMAGE_DIR)
 

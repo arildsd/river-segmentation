@@ -528,6 +528,7 @@ def convert_to_CSV(pointer_file_path, dest_dir):
                                                     os.path.split(label_path)[-1].replace(".tif", ".csv")),
                                        index=False, header=False)
 
+
 def convert_many_to_CSV(pointer_file_dir, dest_dir):
     pointer_files = glob.glob(os.path.join(pointer_file_dir, "*.txt"))
     for pointer_file_path in pointer_files:
@@ -562,7 +563,7 @@ def process_and_rasterize_raw_data():
                                  os.path.join(DEST_ROOT_PATH, subfolder, "label" + os.path.split(path)[-1]))
     print("Done!")
 
-def train_valid_test_split(source_folder, dest_folder, train=0.7, valid=0.1, test=0.2):
+def train_valid_test_split(source_folder, dest_folder, train=0.7, valid=0.1, test=0.2, split_by_big_images=False):
     """
     Moves the files from a single place into train, validation and test folders.
     :param source_folder: The root folder of the data. (small images)
@@ -580,40 +581,62 @@ def train_valid_test_split(source_folder, dest_folder, train=0.7, valid=0.1, tes
     os.makedirs(dest_folder, exist_ok=True)
 
     # Get all the path endings
-    path_endings = glob.glob(os.path.join(source_folder, "labels", "*"))
-    path_endings = [os.path.split(p)[-1] for p in path_endings]
-    random.shuffle(path_endings)
+    images = glob.glob(os.path.join(source_folder, "labels", "*"))
+    images = [os.path.split(p)[-1] for p in images]
+    if split_by_big_images:
+        big_images = list(set([path[:15] for path in images]))
+        tiny_images = images
+        images = big_images
+
+    random.shuffle(images)
 
     # Split into train val and test
-    train_endings = path_endings[:int(train*len(path_endings))]
-    start_index = int(train*len(path_endings))
-    end_index = start_index + int(valid*len(path_endings))
-    val_endings = path_endings[start_index:end_index]
+    train_images = images[:int(train*len(images))]
+    start_index = int(train*len(images))
+    end_index = start_index + int(valid*len(images))
+    val_images = images[start_index:end_index]
     start_index = end_index
-    test_endings = path_endings[start_index:]
+    test_images = images[start_index:]
 
+    if split_by_big_images:
+        new_train_images = []
+        new_val_images = []
+        new_test_images = []
+        for image in tiny_images:
+            if image[:15] in train_images:
+                new_train_images.append(image)
+            elif image[:15] in val_images:
+                new_val_images.append(image)
+            elif image[:15] in test_images:
+                new_test_images.append(image)
+            else:
+                raise ValueError(f"No match was found for {image}. All images should have a match.")
+        train_images = new_train_images
+        val_images = new_val_images
+        test_images = new_test_images
     # Copy files to dest folder
     os.makedirs(os.path.join(dest_folder, "train", "labels"))
     os.makedirs(os.path.join(dest_folder, "train", "images"))
-    for path in train_endings:
+    for path in train_images:
         shutil.copyfile(os.path.join(source_folder, "labels", path),
                         os.path.join(dest_folder, "train", "labels", path))
         shutil.copyfile(os.path.join(source_folder, "images", path),
                         os.path.join(dest_folder, "train", "images", path))
     os.makedirs(os.path.join(dest_folder, "val", "labels"))
     os.makedirs(os.path.join(dest_folder, "val", "images"))
-    for path in val_endings:
+    for path in val_images:
         shutil.copyfile(os.path.join(source_folder, "labels", path),
                         os.path.join(dest_folder, "val", "labels", path))
         shutil.copyfile(os.path.join(source_folder, "images", path),
                         os.path.join(dest_folder, "val", "images", path))
     os.makedirs(os.path.join(dest_folder, "test", "labels"))
     os.makedirs(os.path.join(dest_folder, "test", "images"))
-    for path in test_endings:
+    for path in test_images:
         shutil.copyfile(os.path.join(source_folder, "labels", path),
                         os.path.join(dest_folder, "test", "labels", path))
         shutil.copyfile(os.path.join(source_folder, "images", path),
                         os.path.join(dest_folder, "test", "images", path))
+
 
 
 
@@ -654,11 +677,11 @@ def train_valid_test_split_main():
     :return: Nothing, creates new files
     """
 
-    source_path = r"/media/kitkat/Seagate Expansion Drive/Master_project/tiny_images_2"
-    dest_path = r"/media/kitkat/Seagate Expansion Drive/Master_project/machine_learning_dataset_2"
+    source_path = r"/media/kitkat/Seagate Expansion Drive/Master_project/tiny_images_3"
+    dest_path = r"/media/kitkat/Seagate Expansion Drive/Master_project/machine_learning_dataset_3"
 
-    train_valid_test_split(source_path, dest_path)
+    train_valid_test_split(source_path, dest_path, split_by_big_images=True)
 
 
 if __name__ == '__main__':
-    divide_and_filter_main()
+    train_valid_test_split_main()
