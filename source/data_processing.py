@@ -156,8 +156,8 @@ def divide_image(image_filepath, label_filepath, image_size=512, do_overlap_and_
     # Make properly sized training data
     # Make sure that the whole image is covered, even if the last one has to overlap
     if do_overlap_and_crop:
-        shape_0_indices = list(range(image_size // 4, image_matrix.shape[0], image_size // 4))[:-1]
-        shape_1_indices = list(range(image_size // 4, image_matrix.shape[1], image_size // 4))[:-1]
+        shape_0_indices = list(range(image_size // 4, image_matrix.shape[0], image_size // 4))[:-4]
+        shape_1_indices = list(range(image_size // 4, image_matrix.shape[1], image_size // 4))[:-4]
     else:
         shape_0_indices = list(range(0, image_matrix.shape[0], image_size))
         shape_0_indices[-1] = image_matrix.shape[0] - image_size

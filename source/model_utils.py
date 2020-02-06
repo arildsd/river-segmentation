@@ -22,8 +22,6 @@ def load_data(image_path, label_path):
 
     # Load label
     label_ds = gdal.Open(label_path)
-    if label_ds.GetGeoTransform() != geo_transform:
-        raise Exception(f"The geo transforms of image {image_path} and label {label_path} did not match")
     label_matrix = label_ds.GetRasterBand(1).ReadAsArray()
     label_ds = None
     if np.isnan(np.min(label_matrix)):

@@ -159,15 +159,16 @@ def run(train_data_folder_path, val_data_folder_path, model_name="vgg16", freeze
 
 if __name__ == '__main__':
     model_name = "vgg16"
-    freeze = "all"
+    freeze = "first"
     image_augmentation = False
+    context_mode = True
     run_path = "/home/kitkat/PycharmProjects/river-segmentation/runs"
 
-    train_data_folder_path = r"/media/kitkat/Seagate Expansion Drive/Master_project/machine_learning_dataset/train"
-    val_data_folder_path = r"/media/kitkat/Seagate Expansion Drive/Master_project/machine_learning_dataset/val"
+    train_data_folder_path = r"/media/kitkat/Seagate Expansion Drive/Master_project/machine_learning_dataset_3/train"
+    val_data_folder_path = r"/media/kitkat/Seagate Expansion Drive/Master_project/machine_learning_dataset_3/val"
 
     run(train_data_folder_path, val_data_folder_path, model_name=model_name, freeze=freeze,
-        image_augmentation=image_augmentation)
+        image_augmentation=image_augmentation, context_mode=context_mode)
 
 
 
