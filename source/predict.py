@@ -28,7 +28,7 @@ def evaluate_dataset(model, data_folder_path):
     val_X, val_y = model_utils.convert_training_images_to_numpy_arrays(val)
     val_X = model_utils.fake_colors(val_X)
 
-    model_utils.evaluate_model(model, val_X, val_y)
+    return model_utils.evaluate_model(model, val_X, val_y)
 
 
 def predict_on_image(model, image_path):
@@ -93,7 +93,12 @@ def predict_and_evaluate(model_path, data_folder, output_folder):
     for pred in predictions:
         pred.write_labels_to_raster(os.path.join(output_folder, pred.name))
 
-    evaluate_dataset(model, data_folder)
+    conf_mat, miou = evaluate_dataset(model, data_folder)
+
+    # Save conf mat as csv
+    np.savetxt(os.path.join(output_folder, "val_conf_mat.csv"), conf_mat, delimiter=",")
+    with open(os.path.join(output_folder, "val_miou.txt"), "w+") as f:
+        f.write(str(miou))
 
 
 def predict_and_evaluate_main():
