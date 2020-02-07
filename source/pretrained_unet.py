@@ -90,7 +90,7 @@ def vgg16_unet(image_size=512, n_max_filters=512, freeze="all", context_mode=Fal
     x = tf.keras.layers.Conv2D(64, kernel_size=(3, 3), padding="same", activation="relu")(x)
     if context_mode:
         # Crop to only predict on the middle pixels
-        x = tf.keras.layers.Cropping2D(cropping=image_size//4)(x)
+        x = tf.keras.layers.MaxPool2D()(x)
     x = tf.keras.layers.Conv2D(6, kernel_size=(3, 3), padding="same", activation="softmax")(x)
 
     model = tf.keras.Model(inputs=input, outputs=x)
