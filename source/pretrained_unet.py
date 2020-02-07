@@ -16,7 +16,7 @@ def vgg16_unet(image_size=512, n_max_filters=512, freeze="all", context_mode=Fal
     :param freeze: Specifies what layers to freeze during training. The frozen layers will not be trained.
                 all: all of the VGG16 layers are frozen. first: all but the last conv block of VGG16 is frozen.
                 none: no layers are frozen
-    :return:
+    :return: A keras model
     """
 
     # Determine what layers to freeze
@@ -98,6 +98,46 @@ def vgg16_unet(image_size=512, n_max_filters=512, freeze="all", context_mode=Fal
     return model
 
 
+def dense_net121(image_size=512, n_max_filters=512, freeze="all", context_mode=False):
+    """
+    A unet model that uses a pre-trained VGG16 CNN as the encoder part.
+    :param image_size: The size of the input images
+    :param n_max_filters: The number of filters at the bottom layer of the unet model.
+    :param freeze: Specifies what layers to freeze during training. The frozen layers will not be trained.
+                all: all of the VGG16 layers are frozen. first: all but the last conv block of VGG16 is frozen.
+                none: no layers are frozen
+    :return: A keras model
+    """
+
+    # Define input. It has 3 color channels since vgg is trained on a color dataset
+    input = tf.keras.Input(shape=(image_size, image_size, 3))
+
+    # Load pre-trained model
+    dense_net = tf.keras.applications.densenet.DenseNet121(weights="imagenet",
+                                              include_top=False, input_tensor=input)
+    # There are pooling layers at these indices:  6, 52, 140, 312, 427
+
+    freeze_until = None
+    if freeze == "all":
+        freeze_until = 427
+    elif freeze == "first":
+        freeze_until = 312
+    else:
+        freeze_until = 0
+
+    for i, layer in enumerate(dense_net.layers):
+        if i < freeze_until:
+            layer.trainable = False
+
+    skip_connections = []
+
+    # First dense block
+    x = dense_net.layers[0:6](input)
+    skip_connections.append(x)
+    x = dense_net.layers[6]()
+
+
+
 def run(train_data_folder_path, val_data_folder_path, model_name="vgg16", freeze="all", image_augmentation=False,
         context_mode=False):
     tf.keras.backend.clear_session()
@@ -114,6 +154,7 @@ def run(train_data_folder_path, val_data_folder_path, model_name="vgg16", freeze
     # Training data
     train = model_utils.load_dataset(train_data_folder_path)
     train_X, train_y = model_utils.convert_training_images_to_numpy_arrays(train)
+    del train
     train_X = model_utils.fake_colors(train_X)
     if image_augmentation:
         train_X = model_utils.image_augmentation(train_X)
@@ -122,6 +163,7 @@ def run(train_data_folder_path, val_data_folder_path, model_name="vgg16", freeze
     # Validation data
     val = model_utils.load_dataset(val_data_folder_path)
     val_X, val_y = model_utils.convert_training_images_to_numpy_arrays(val)
+    del val
     val_X = model_utils.fake_colors(val_X)
 
 

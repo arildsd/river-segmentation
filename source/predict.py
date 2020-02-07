@@ -4,6 +4,7 @@ import model_utils
 import numpy as np
 import glob
 import os
+import sys
 
 
 
@@ -96,16 +97,28 @@ def predict_and_evaluate(model_path, data_folder, output_folder):
 
 
 def predict_and_evaluate_main():
-    model_path = r"/home/kitkat/Master_project/runs/2020-02-02_23:47:09.414922_vgg16_freeze_all_no_augment/model.hdf5"
-    data_folder = r"/media/kitkat/Seagate Expansion Drive/Master_project/machine_learning_dataset_2/val"
-    output_folder = r"/home/kitkat/Master_project/runs/2020-02-02_23:47:09.414922_vgg16_freeze_all_no_augment/predictions"
+    model_path = r"/home/kitkat/Master_project/runs/2020-02-06_17:22:25.938932_vgg16_freeze_first_no_augment/model.hdf5"
+    data_folder = r"/media/kitkat/Seagate Expansion Drive/Master_project/machine_learning_dataset_3/val"
+    output_folder = r"/home/kitkat/Master_project/runs/2020-02-06_17:22:25.938932_vgg16_freeze_first_no_augment/predictions"
+
+    predict_and_evaluate(model_path, data_folder, output_folder)
+
+
+def run_with_args():
+    """
+    Call this method in main to have the predict and eval run using arguments
+    :return:
+    """
+    model_path = sys.argv[1]
+    data_folder = sys.argv[2]
+    output_folder = sys.argv[3]
 
     predict_and_evaluate(model_path, data_folder, output_folder)
 
 if __name__ == '__main__':
     tf.keras.backend.clear_session()
 
-    predict_and_evaluate_main()
+    run_with_args()
 
 
 
