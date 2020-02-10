@@ -654,7 +654,7 @@ def divide_and_filter_main():
     # Define the river folders that will be processed
     RIVER_SUBFOLDER_NAMES = ["gaula_1963", "lærdal_1976"]
     # Destination root path
-    DEST_ROOT_PATH = r"/media/kitkat/Seagate Expansion Drive/Master_project/tiny_images_3"
+    DEST_ROOT_PATH = r"/media/kitkat/Seagate Expansion Drive/Master_project/tiny_images_4"
 
     # Create label rasters
     label_paths = []
@@ -668,7 +668,7 @@ def divide_and_filter_main():
             name = os.path.split(l_path)[-1].replace("label", "")
             image_path = os.path.join(ORTO_ROOT_FOLDER_PATH, subfolder, name)
             image_paths.append(image_path)
-    divide_and_save_images(image_paths, label_paths, DEST_ROOT_PATH, image_size=512, do_overlap_and_crop=True)
+    divide_and_save_images(image_paths, label_paths, DEST_ROOT_PATH, image_size=512, do_overlap_and_crop=False)
 
 
 def train_valid_test_split_main():
@@ -684,4 +684,4 @@ def train_valid_test_split_main():
 
 
 if __name__ == '__main__':
-    train_valid_test_split_main()
+    divide_and_filter_main()

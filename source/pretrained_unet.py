@@ -109,7 +109,7 @@ def dense_net121(image_size=512, n_max_filters=512, freeze="all", context_mode=F
     :return: A keras model
     """
 
-    # Define input. It has 3 color channels since vgg is trained on a color dataset
+    # Define input. It has 3 color channels since dense net is trained on a color dataset
     input = tf.keras.Input(shape=(image_size, image_size, 3))
 
     # Load pre-trained model
@@ -131,10 +131,31 @@ def dense_net121(image_size=512, n_max_filters=512, freeze="all", context_mode=F
 
     skip_connections = []
 
-    # First dense block
+    # 1st dense block
     x = dense_net.layers[0:6](input)
     skip_connections.append(x)
-    x = dense_net.layers[6]()
+    x = dense_net.layers[6](x)
+
+    # 2nd dense block
+    x = dense_net.layers[7:52](x)
+    skip_connections.append(x)
+    x = dense_net[52](x)
+
+    # 3rd dense block
+    x = dense_net.layers[53:140](x)
+    skip_connections.append(x)
+    x = dense_net.layers[140](x)
+
+    # 4th dense block
+    x = dense_net.layers[141:312](x)
+    skip_connections.append(x)
+    x = dense_net.layers[312]
+
+    # 5th dense block
+    x = dense_net.layers[313:427](x)
+    skip_connections.append(x)
+    x = dense_net.layers[427](x)
+
 
 
 
