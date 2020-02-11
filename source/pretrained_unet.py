@@ -15,16 +15,27 @@ def vgg16_unet(image_size=512, n_max_filters=512, freeze="all", context_mode=Fal
     :param n_max_filters: The number of filters at the bottom layer of the unet model.
     :param freeze: Specifies what layers to freeze during training. The frozen layers will not be trained.
                 all: all of the VGG16 layers are frozen. first: all but the last conv block of VGG16 is frozen.
-                none: no layers are frozen
+                none: no layers are frozen. number: freeze all conv blocks upto and including the number.
     :return: A keras model
     """
 
     # Determine what layers to freeze
+    freeze = str(freeze).lower()
     freeze_until = None
     if freeze == "all":
         freeze_until = 19
     elif freeze == "first":
         freeze_until = 15
+    elif freeze == "1":
+        freeze_until = 3
+    elif freeze == "2":
+        freeze_until = 6
+    elif freeze == "3":
+        freeze_until = 10
+    elif freeze == "4":
+        freeze_until = 14
+    elif freeze == "5":
+        freeze_until = 18
     else:
         freeze_until = 0
 

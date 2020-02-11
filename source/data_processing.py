@@ -137,7 +137,7 @@ def is_quality_image(label_image, unknown_threshold=0.1):
     return True
 
 
-def divide_image(image_filepath, label_filepath, image_size=512, do_overlap_and_crop=False):
+def divide_image(image_filepath, label_filepath, image_size=512, do_overlap=False, do_crop=False):
     # Load image
     image_ds = gdal.Open(image_filepath)
     geo_transform = image_ds.GetGeoTransform()
@@ -155,7 +155,7 @@ def divide_image(image_filepath, label_filepath, image_size=512, do_overlap_and_
     training_data = []
     # Make properly sized training data
     # Make sure that the whole image is covered, even if the last one has to overlap
-    if do_overlap_and_crop:
+    if do_overlap:
         shape_0_indices = list(range(image_size // 4, image_matrix.shape[0], image_size // 4))[:-4]
         shape_1_indices = list(range(image_size // 4, image_matrix.shape[1], image_size // 4))[:-4]
     else:
@@ -166,7 +166,7 @@ def divide_image(image_filepath, label_filepath, image_size=512, do_overlap_and_
     # Split the images
     for shape_0 in shape_0_indices:
         for shape_1 in shape_1_indices:
-            if do_overlap_and_crop:
+            if do_crop:
                 # Extract labels for the center of the image
                 labels = label_matrix[shape_0 + image_size // 4:shape_0 + image_size - image_size // 4,
                          shape_1 + image_size // 4:shape_1 + image_size - image_size // 4]
@@ -190,7 +190,7 @@ def divide_image(image_filepath, label_filepath, image_size=512, do_overlap_and_
 
 
 def divide_and_save_images(image_filepaths, label_filepaths, output_folder=None, image_size=512,
-                           do_overlap_and_crop=False):
+                           do_overlap=False, do_crop=False):
     """
     This function takes big images and splits them into smaller images and saves them to disk
     :param image_filepaths: A list of filepaths to the images that will be loaded
@@ -212,7 +212,7 @@ def divide_and_save_images(image_filepaths, label_filepaths, output_folder=None,
         os.makedirs(os.path.join(output_folder, "labels"), exist_ok=True)
         for i in range(len(image_filepaths)):
             training_images = divide_image(image_filepaths[i], label_filepaths[i], image_size=image_size,
-                                           do_overlap_and_crop=do_overlap_and_crop)
+                                           do_overlap=do_overlap, do_crop=do_crop)
             for image in training_images:
                 # Data
                 data_path = os.path.join(output_folder, "images", image.name + ".tif")
@@ -668,7 +668,7 @@ def divide_and_filter_main():
             name = os.path.split(l_path)[-1].replace("label", "")
             image_path = os.path.join(ORTO_ROOT_FOLDER_PATH, subfolder, name)
             image_paths.append(image_path)
-    divide_and_save_images(image_paths, label_paths, DEST_ROOT_PATH, image_size=512, do_overlap_and_crop=False)
+    divide_and_save_images(image_paths, label_paths, DEST_ROOT_PATH, image_size=512, do_overlap=True, do_crop=False)
 
 
 def train_valid_test_split_main():
