@@ -7,6 +7,7 @@ import os
 import random
 import datetime
 import model_utils
+import time
 
 def vgg16_unet(image_size=512, n_max_filters=512, freeze="all", context_mode=False):
     """
@@ -173,6 +174,7 @@ def dense_net121(image_size=512, n_max_filters=512, freeze="all", context_mode=F
 def run(train_data_folder_path, val_data_folder_path, model_name="vgg16", freeze="all", image_augmentation=False,
         context_mode=False):
     tf.keras.backend.clear_session()
+    start_time = time.time()
 
     # Make run name based on parameters and timestamp
     augment = "with" if image_augmentation else "no"
@@ -185,12 +187,15 @@ def run(train_data_folder_path, val_data_folder_path, model_name="vgg16", freeze
     # Load data
     # Training data
     train = model_utils.load_dataset(train_data_folder_path)
+    print(f"Loading the training data took {time.time() - start_time} seconds")
     train_X, train_y = model_utils.convert_training_images_to_numpy_arrays(train)
+    print(f"Converting to a numpy array took {time.time() - start_time} seconds")
     del train
     train_X = model_utils.fake_colors(train_X)
     if image_augmentation:
         train_X = model_utils.image_augmentation(train_X)
         train_y = model_utils.image_augmentation(train_y)
+    print(f"Converting image augmentation and color faking took {time.time() - start_time} seconds")
 
     # Validation data
     val = model_utils.load_dataset(val_data_folder_path)
@@ -235,11 +240,11 @@ if __name__ == '__main__':
     model_name = "vgg16"
     freeze = "first"
     image_augmentation = False
-    context_mode = True
+    context_mode = False
     run_path = "/home/kitkat/PycharmProjects/river-segmentation/runs"
 
-    train_data_folder_path = r"/media/kitkat/Seagate Expansion Drive/Master_project/machine_learning_dataset_3/train"
-    val_data_folder_path = r"/media/kitkat/Seagate Expansion Drive/Master_project/machine_learning_dataset_3/val"
+    train_data_folder_path = r"/media/kitkat/Seagate Expansion Drive/Master_project/machine_learning_dataset_2/train"
+    val_data_folder_path = r"/media/kitkat/Seagate Expansion Drive/Master_project/machine_learning_dataset/val"
 
     run(train_data_folder_path, val_data_folder_path, model_name=model_name, freeze=freeze,
         image_augmentation=image_augmentation, context_mode=context_mode)

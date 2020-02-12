@@ -21,7 +21,7 @@ def load_data(image_path, label_path):
         return None
 
     # Load label
-    label_ds = gdal.Open(label_path)
+    label_ds = gdal.Open(label_path, gdal.GA_ReadOnly)
     label_matrix = label_ds.GetRasterBand(1).ReadAsArray()
     label_ds = None
     if np.isnan(np.min(label_matrix)):
@@ -62,17 +62,8 @@ def convert_training_images_to_numpy_arrays(training_images, one_hot_encode=Fals
     (n is the number of images). The same applies to data_y but for the labels instead of images.
     """
     # Training set
-    data_set_X = None
-    data_set_y = None
-    for i, image in enumerate(training_images):
-        if i == 0:
-            data_set_X = image.data
-            data_set_X = np.expand_dims(data_set_X, 0)
-            data_set_y = image.labels
-            data_set_y = np.expand_dims(data_set_y, 0)
-        else:
-            data_set_X = np.concatenate([data_set_X, np.expand_dims(image.data, 0)], 0)
-            data_set_y = np.concatenate([data_set_y, np.expand_dims(image.labels, 0)], 0)
+    data_set_X = np.concatenate([np.expand_dims(image.data, 0) for image in training_images], 0)
+    data_set_y = np.concatenate([np.expand_dims(image.labels, 0) for image in training_images], 0)
     # Add channel axis
     data_set_X = np.expand_dims(data_set_X, -1)
     data_set_y = np.expand_dims(data_set_y, -1)
