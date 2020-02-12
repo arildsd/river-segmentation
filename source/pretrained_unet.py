@@ -172,14 +172,13 @@ def dense_net121(image_size=512, n_max_filters=512, freeze="all", context_mode=F
 
 
 def run(train_data_folder_path, val_data_folder_path, model_name="vgg16", freeze="all", image_augmentation=False,
-        context_mode=False):
+        context_mode=False, run_path="/home/kitkat/PycharmProjects/river-segmentation/runs"):
     tf.keras.backend.clear_session()
     start_time = time.time()
 
     # Make run name based on parameters and timestamp
     augment = "with" if image_augmentation else "no"
     run_name = f"{model_name}_freeze_{freeze}_{augment}_augment"
-    run_path = "/home/kitkat/PycharmProjects/river-segmentation/runs"
     date = str(datetime.datetime.now())
     run_path = os.path.join(run_path, f"{date}_{run_name}".replace(" ", "_"))
     os.makedirs(run_path, exist_ok=True)
