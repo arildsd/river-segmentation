@@ -11,7 +11,7 @@ import gdal
 
 def load_data(image_path, label_path):
     # Load image
-    image_ds = gdal.Open(image_path)
+    image_ds = gdal.Open(image_path, gdal.GA_ReadOnly)
     geo_transform = image_ds.GetGeoTransform()
     projection = image_ds.GetProjection()
     image_matrix = image_ds.GetRasterBand(1).ReadAsArray()
