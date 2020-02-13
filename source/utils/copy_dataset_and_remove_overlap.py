@@ -9,6 +9,8 @@ Image names must be in the following format: <big_image_name>_n_<north_offset>_e
 """
 def _copy_and_remove_overlap(source_dir, dest_dir):
     all_images = glob.glob(os.path.join(source_dir, "images", "*.tif"))
+    os.makedirs(os.path.join(dest_dir, "images"))
+    os.makedirs(os.path.join(dest_dir, "labels"))
     for image in all_images:
         splits = os.path.split(image)[-1].split("_")
         north_offset = int(splits[2])
