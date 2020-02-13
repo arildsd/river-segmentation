@@ -23,10 +23,11 @@ def run():
     source_path = sys.argv[1]
     dest_path = sys.argv[2]
 
-    os.makedirs(dest_path, exist_ok=True)
+
     for subfolder in ("train", "val", "test"):
         s_path = os.path.join(source_path, subfolder)
         d_path = os.path.join(dest_path, subfolder)
+        os.makedirs(d_path, exist_ok=True)
         _copy_and_remove_overlap(s_path, d_path)
 
 if __name__ == '__main__':
