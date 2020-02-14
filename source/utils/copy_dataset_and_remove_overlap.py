@@ -9,12 +9,12 @@ Image names must be in the following format: <big_image_name>_n_<north_offset>_e
 """
 def _copy_and_remove_overlap(source_dir, dest_dir):
     all_images = glob.glob(os.path.join(source_dir, "images", "*.tif"))
-    os.makedirs(os.path.join(dest_dir, "images"))
-    os.makedirs(os.path.join(dest_dir, "labels"))
+    os.makedirs(os.path.join(dest_dir, "images"), exist_ok=True)
+    os.makedirs(os.path.join(dest_dir, "labels"), exist_ok=True)
     for image in all_images:
         splits = os.path.split(image)[-1].split("_")
         north_offset = int(splits[2])
-        east_offset = int(splits[4])
+        east_offset = int(splits[4].replace(".tif", ""))
         if north_offset % 512 == 0 and east_offset % 512 == 0:
             shutil.copyfile(image, os.path.join(dest_dir, "images", os.path.split(image)[-1]))
             shutil.copyfile(image.replace("images", "labels"), os.path.join(dest_dir, "labels", os.path.split(image)[-1]))
