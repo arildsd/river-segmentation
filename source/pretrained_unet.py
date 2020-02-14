@@ -8,6 +8,7 @@ import random
 import datetime
 import model_utils
 import time
+import resource
 
 def vgg16_unet(image_size=512, n_max_filters=512, freeze="all", context_mode=False):
     """
@@ -203,6 +204,9 @@ def run(train_data_folder_path, val_data_folder_path, model_name="vgg16", freeze
     val_X = model_utils.fake_colors(val_X)
 
 
+
+
+
     # Load and compile model
     if model_name.lower() == "vgg16":
         model = vgg16_unet(freeze=freeze, context_mode=context_mode)
@@ -227,13 +231,20 @@ def run(train_data_folder_path, val_data_folder_path, model_name="vgg16", freeze
     callbacks.append(csv_logger)
 
     # Train the model
-    model.fit(train_X, train_y, batch_size=1, epochs=100, validation_data=(val_X, val_y), callbacks=callbacks)
+    model.fit(train_X, train_y, batch_size=4, epochs=100, validation_data=(val_X, val_y), callbacks=callbacks)
 
     # Print and save confusion matrix
     print("Confusion matrix on the validation data")
     conf_mat = model_utils.evaluate_model(model, val_X, val_y)
     with open(os.path.join(run_path, "conf_mat.txt"), "w+") as f:
         f.write(str(conf_mat))
+
+    try:
+        print("The current process uses the following amount of RAM (in GB) at its peak")
+        print(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 2**20)
+        print(resource.getpagesize())
+    except Exception:
+        print("Failed to print memory usage. This function was intended to run on a linux system.")
 
 if __name__ == '__main__':
     model_name = "vgg16"
@@ -242,7 +253,7 @@ if __name__ == '__main__':
     context_mode = False
     run_path = "/home/kitkat/PycharmProjects/river-segmentation/runs"
 
-    train_data_folder_path = r"/media/kitkat/Seagate Expansion Drive/Master_project/machine_learning_dataset_2/train"
+    train_data_folder_path = r"/media/kitkat/Seagate Expansion Drive/Master_project/machine_learning_dataset/train"
     val_data_folder_path = r"/media/kitkat/Seagate Expansion Drive/Master_project/machine_learning_dataset/val"
 
     run(train_data_folder_path, val_data_folder_path, model_name=model_name, freeze=freeze,
