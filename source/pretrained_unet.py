@@ -10,7 +10,7 @@ import model_utils
 import time
 import resource
 
-def vgg16_unet(image_size=512, n_max_filters=512, freeze="all", context_mode=False):
+def vgg16_unet(image_size=512, n_max_filters=512, freeze="all", context_mode=False, num_classes=6):
     """
     A unet model that uses a pre-trained VGG16 CNN as the encoder part.
     :param image_size: The size of the input images
@@ -104,7 +104,7 @@ def vgg16_unet(image_size=512, n_max_filters=512, freeze="all", context_mode=Fal
     if context_mode:
         # Crop to only predict on the middle pixels
         x = tf.keras.layers.MaxPool2D()(x)
-    x = tf.keras.layers.Conv2D(6, kernel_size=(3, 3), padding="same", activation="softmax")(x)
+    x = tf.keras.layers.Conv2D(num_classes, kernel_size=(3, 3), padding="same", activation="softmax")(x)
 
     model = tf.keras.Model(inputs=input, outputs=x)
 
@@ -173,7 +173,7 @@ def dense_net121(image_size=512, n_max_filters=512, freeze="all", context_mode=F
 
 
 def run(train_data_folder_path, val_data_folder_path, model_name="vgg16", freeze="all", image_augmentation=False,
-        context_mode=False, run_path="/home/kitkat/PycharmProjects/river-segmentation/runs"):
+        context_mode=False, run_path="/home/kitkat/PycharmProjects/river-segmentation/runs", replace_unknown=False):
     tf.keras.backend.clear_session()
     start_time = time.time()
 
@@ -191,6 +191,8 @@ def run(train_data_folder_path, val_data_folder_path, model_name="vgg16", freeze
     train_X, train_y = model_utils.convert_training_images_to_numpy_arrays(train)
     print(f"Converting to a numpy array took {time.time() - start_time} seconds")
     del train
+    if replace_unknown:
+        train_y = model_utils.replace_class(train_y, class_id=5)
     train_X = model_utils.fake_colors(train_X)
     if image_augmentation:
         train_X = model_utils.image_augmentation(train_X)
@@ -201,11 +203,13 @@ def run(train_data_folder_path, val_data_folder_path, model_name="vgg16", freeze
     val = model_utils.load_dataset(val_data_folder_path)
     val_X, val_y = model_utils.convert_training_images_to_numpy_arrays(val)
     del val
+    if replace_unknown:
+        model_utils.replace_class(val_y, class_id=5)
     val_X = model_utils.fake_colors(val_X)
 
     # Load and compile model
     if model_name.lower() == "vgg16":
-        model = vgg16_unet(freeze=freeze, context_mode=context_mode)
+        model = vgg16_unet(freeze=freeze, context_mode=context_mode, num_classes=5 if replace_unknown else 6)
     else:
         # TODO: add more model options (DenseNet)
         model = None
@@ -253,7 +257,7 @@ if __name__ == '__main__':
     val_data_folder_path = r"/media/kitkat/Seagate Expansion Drive/Master_project/machine_learning_dataset/val"
 
     run(train_data_folder_path, val_data_folder_path, model_name=model_name, freeze=freeze,
-        image_augmentation=image_augmentation, context_mode=context_mode)
+        image_augmentation=image_augmentation, context_mode=context_mode, replace_unknown=True)
 
 
 

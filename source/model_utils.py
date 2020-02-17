@@ -88,8 +88,6 @@ def fake_colors(data):
     return new_data
 
 
-
-
 def image_augmentation(data):
     """
     Takes the original image matrix and add rotated images and mirrored images (with rotations).
@@ -114,7 +112,8 @@ def image_augmentation(data):
 
     return augmented_image_matrix
 
-def replace_class(data, class_id=6):
+
+def replace_class(data, class_id=5):
     """
     Replaces the class id with the nearest neighbor class.
     :param data: A numpy array with shape (n, image_size, image_size, channels)
@@ -125,7 +124,6 @@ def replace_class(data, class_id=6):
 
     ind = nd.distance_transform_edt(invalid, return_distances=False, return_indices=True)
     return data[tuple(ind)]
-    
 
 
 def miou(y_true, y_pred, num_classes=6):
