@@ -8,6 +8,7 @@ import os
 import random
 import data_processing
 import gdal
+import scipy.ndimage as nd
 
 def load_data(image_path, label_path):
     # Load image
@@ -112,6 +113,19 @@ def image_augmentation(data):
     augmented_image_matrix = np.concatenate(augments, axis=0)
 
     return augmented_image_matrix
+
+def replace_class(data, class_id=6):
+    """
+    Replaces the class id with the nearest neighbor class.
+    :param data: A numpy array with shape (n, image_size, image_size, channels)
+    :return: A numpy array with the new classes
+    """
+    # A boolean array with a 1 at the locations with the class to be replaced
+    invalid = data == class_id
+
+    ind = nd.distance_transform_edt(invalid, return_distances=False, return_indices=True)
+    return data[tuple(ind)]
+    
 
 
 def miou(y_true, y_pred, num_classes=6):

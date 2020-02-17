@@ -203,10 +203,6 @@ def run(train_data_folder_path, val_data_folder_path, model_name="vgg16", freeze
     del val
     val_X = model_utils.fake_colors(val_X)
 
-
-
-
-
     # Load and compile model
     if model_name.lower() == "vgg16":
         model = vgg16_unet(freeze=freeze, context_mode=context_mode)

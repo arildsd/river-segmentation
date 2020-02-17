@@ -23,7 +23,6 @@ def run():
     source_path = sys.argv[1]
     dest_path = sys.argv[2]
 
-
     for subfolder in ("train", "val", "test"):
         s_path = os.path.join(source_path, subfolder)
         d_path = os.path.join(dest_path, subfolder)
