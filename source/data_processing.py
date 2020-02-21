@@ -24,7 +24,22 @@ class TrainingImage:
     A class for containing data (and metadata) for a training image.
     """
 
-    def __init__(self, data, labels, geo_transform, name="", projection=None, label_geo_transform=None):
+    def __init__(self, data, labels, geo_transform, name="", projection=None, label_geo_transform=None,
+                 north_offset=None, east_offset=None):
+        """
+        A class to store the data and corresponding labels with methods for writing to file.
+
+        :param data: Image in the form of an numpy array with shape (image_size, image_size)
+        :param labels: Label in the form of an numpy array with shape (image_size, image_size).
+        The array should be filled with the class id for that pixel.
+        :param geo_transform: A list defining the geo transform. See gdal doc for more info
+        :param name: The name of the image.
+        :param projection: The Geo projection. See gdal doc for more info.
+        :param label_geo_transform: The geo transform of the label.
+        :param north_offset: The offset in pixels from the most north point when dividing the image.
+        :param east_offset: The offset in pixels from the most east point when dividing the image.
+        """
+
         if projection is None:
             projection = gdal.osr.SpatialReference()
             projection.ImportFromEPSG(25833)
@@ -34,6 +49,8 @@ class TrainingImage:
         self.data = data
         self.labels = labels
         self.name = name
+        self.north_offset = north_offset
+        self.east_offset = east_offset
 
     def _write_array_to_raster(self, output_filepath, array, geo_transform):
         """
@@ -175,9 +192,16 @@ def divide_image(image_filepath, label_filepath, image_size=512, do_overlap=Fals
             # Check if the image has to much unknown
             if not is_quality_image(labels):
                 continue
+
+            # Calculate the geo transform of the label
             label_geo_transform = list(geo_transform)
-            label_geo_transform[0] += (shape_1 + image_size//4) * geo_transform[1]  # East
-            label_geo_transform[3] += (shape_0 + image_size//4) * geo_transform[5]  # North
+            if do_crop:
+                label_geo_transform[0] += (shape_1 + image_size//4) * geo_transform[1]  # East
+                label_geo_transform[3] += (shape_0 + image_size//4) * geo_transform[5]  # North
+            else:
+                label_geo_transform[0] += (shape_1) * geo_transform[1]  # East
+                label_geo_transform[3] += (shape_0) * geo_transform[5]  # North
+
             data = image_matrix[shape_0:shape_0 + image_size, shape_1:shape_1 + image_size]
             new_data_geo_transform = list(geo_transform)
             new_data_geo_transform[0] += shape_1 * geo_transform[1]  # East
@@ -185,7 +209,8 @@ def divide_image(image_filepath, label_filepath, image_size=512, do_overlap=Fals
 
             name = os.path.split(image_filepath)[-1].replace(".tif", "") + f"_n_{shape_0}_e_{shape_1}"
             training_data.append(TrainingImage(data, labels, new_data_geo_transform, name=name, projection=projection,
-                                               label_geo_transform=label_geo_transform))
+                                               label_geo_transform=label_geo_transform, east_offset=shape_1,
+                                               north_offset=shape_0))
     return training_data
 
 
@@ -220,8 +245,6 @@ def divide_and_save_images(image_filepaths, label_filepaths, output_folder=None,
                 # Labels
                 label_path = os.path.join(output_folder, "labels", image.name + ".tif")
                 image.write_labels_to_raster(label_path)
-
-
 
 
 def find_intersecting_polys(geometry, polys):
@@ -327,6 +350,15 @@ def find_closest_pixel(i, j, arrays, threshold=10):
     # Return the id of the "unknown" class since no other classes where found
     return 5
 
+
+def reassemble_big_image(images, small_image_size=512):
+    big_image = np.zeros((6000, 8000)) + 5
+    for image in images:
+        image_offset_shape_0 = image.north_offset
+        image_offset_shape_1 = image.east_offset
+        big_image[image_offset_shape_0:image_offset_shape_0+small_image_size,
+                  image_offset_shape_1:image_offset_shape_1+small_image_size] = image.labels
+    return big_image
 
 def merge_labels_rasters(label_raster_dict):
     """
