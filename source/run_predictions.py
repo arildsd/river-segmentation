@@ -39,6 +39,8 @@ def run(model_path, input_folder, output_folder):
         big_image.write_labels_to_raster(os.path.join(output_folder, big_image.name))
 
 if __name__ == '__main__':
+    os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+
     # Get args
     model_path = sys.argv[1]
     input_folder = sys.argv[2]

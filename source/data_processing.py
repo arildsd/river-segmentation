@@ -138,7 +138,7 @@ def is_mono_class(label_image):
             return True
     return False
 
-def is_quality_image(label_image, unknown_threshold=0.1):
+def is_quality_image(label_image, unknown_threshold=0.05):
     """
     Check that the image don't contain to much of the unknown class, as this is an indication of missing (wrong) labels
     :param label_image: A numpy matrix representing the label image
@@ -259,7 +259,7 @@ def rasterize_polygons(polygons, image_path, class_name, shapefile_path, driver=
     """
     Retuns a data set image with the bounding box dimensions and the polygon locations marked by 1.
     :param polygons: A list of polygons of the same class
-    :param bounding_box: A bounding box. type: Geometry
+    :param image_path The path to the image
     :return: Data set image
     """
     # Get meta data from the image
@@ -295,9 +295,8 @@ def rasterize_polygons(polygons, image_path, class_name, shapefile_path, driver=
     # Burn the polygons into the new image
     gdal.RasterizeLayer(label_raster, (1,), layer, burn_values=(1,))
     poly_ds.Destroy()
+
     # Save and close the image
-
-
     return label_raster
 
 
@@ -459,6 +458,30 @@ def create_raster_labels(image_path, poly_dict, destination_path, driver=gdal.Ge
     # Save, the gdal way
     label_dataset = None
     print(f"Wrote label image {image_path} to {destination_path}")
+
+
+def burn_labels_to_image(image_path, shapefile_path, class_id):
+    """
+    Burn labels from the shapefile on the image. Will only override the values where the shapefile intersects, the rest
+    will remain unchanged.
+
+    :param image_path: Path to the raster label image.
+    :param shapefile_path: Path to the shapefile.
+    :param int: The class id of the shapefile.
+    :return: Write the image to file (overriding). Return nothing.
+    """
+    # Get meta data from the image
+    image_ds = gdal.Open(image_path, gdal.GA_Update)
+    geo_transform = image_ds.GetGeoTransform()
+    projection = image_ds.GetProjection()
+    n_pixels_north = image_ds.RasterYSize
+    n_pixels_east = image_ds.RasterXSize
+
+    # Get geometries from shapefile
+    driver = ogr.GetDriverByName("ESRI Shapefile")
+    ds = driver.Open(shapefile_path, 0)
+    layer = ds.GetLayer()
+    gdal.RasterizeLayer(image_ds, (1,), layer, burn_values=(class_id,))
 
 
 def create_bounding_box(image_ds):
@@ -684,9 +707,9 @@ def divide_and_filter_main():
     # Define path to label rasters
     LABEL_RASTER_ROOT_FOLDER = r"/media/kitkat/Seagate Expansion Drive/Master_project/labels/rasters"
     # Define the river folders that will be processed
-    RIVER_SUBFOLDER_NAMES = ["gaula_1963", "lærdal_1976"]
+    RIVER_SUBFOLDER_NAMES = ["gaula_1963", "lærdal_1976", "surna_1963"]
     # Destination root path
-    DEST_ROOT_PATH = r"/media/kitkat/Seagate Expansion Drive/Master_project/tiny_images_4"
+    DEST_ROOT_PATH = r"/media/kitkat/Seagate Expansion Drive/Master_project/tiny_images_5"
 
     # Create label rasters
     label_paths = []
@@ -700,7 +723,7 @@ def divide_and_filter_main():
             name = os.path.split(l_path)[-1].replace("label", "")
             image_path = os.path.join(ORTO_ROOT_FOLDER_PATH, subfolder, name)
             image_paths.append(image_path)
-    divide_and_save_images(image_paths, label_paths, DEST_ROOT_PATH, image_size=512, do_overlap=True, do_crop=False)
+    divide_and_save_images(image_paths, label_paths, DEST_ROOT_PATH, image_size=512, do_overlap=False, do_crop=False)
 
 
 def train_valid_test_split_main():
