@@ -618,7 +618,7 @@ def process_and_rasterize_raw_data():
                                  os.path.join(DEST_ROOT_PATH, subfolder, "label" + os.path.split(path)[-1]))
     print("Done!")
 
-def train_valid_test_split(source_folder, dest_folder, train=0.7, valid=0.1, test=0.2, split_by_big_images=False):
+def train_valid_test_split(source_folder, dest_folder, train=0.8, valid=0.2, test=0, split_by_big_images=False):
     """
     Moves the files from a single place into train, validation and test folders.
     :param source_folder: The root folder of the data. (small images)
@@ -670,22 +670,22 @@ def train_valid_test_split(source_folder, dest_folder, train=0.7, valid=0.1, tes
         val_images = new_val_images
         test_images = new_test_images
     # Copy files to dest folder
-    os.makedirs(os.path.join(dest_folder, "train", "labels"))
-    os.makedirs(os.path.join(dest_folder, "train", "images"))
+    os.makedirs(os.path.join(dest_folder, "train", "labels"), exist_ok=True)
+    os.makedirs(os.path.join(dest_folder, "train", "images"), exist_ok=True)
     for path in train_images:
         shutil.copyfile(os.path.join(source_folder, "labels", path),
                         os.path.join(dest_folder, "train", "labels", path))
         shutil.copyfile(os.path.join(source_folder, "images", path),
                         os.path.join(dest_folder, "train", "images", path))
-    os.makedirs(os.path.join(dest_folder, "val", "labels"))
-    os.makedirs(os.path.join(dest_folder, "val", "images"))
+    os.makedirs(os.path.join(dest_folder, "val", "labels"), exist_ok=True)
+    os.makedirs(os.path.join(dest_folder, "val", "images"), exist_ok=True)
     for path in val_images:
         shutil.copyfile(os.path.join(source_folder, "labels", path),
                         os.path.join(dest_folder, "val", "labels", path))
         shutil.copyfile(os.path.join(source_folder, "images", path),
                         os.path.join(dest_folder, "val", "images", path))
-    os.makedirs(os.path.join(dest_folder, "test", "labels"))
-    os.makedirs(os.path.join(dest_folder, "test", "images"))
+    os.makedirs(os.path.join(dest_folder, "test", "labels"), exist_ok=True)
+    os.makedirs(os.path.join(dest_folder, "test", "images"), exist_ok=True)
     for path in test_images:
         shutil.copyfile(os.path.join(source_folder, "labels", path),
                         os.path.join(dest_folder, "test", "labels", path))
@@ -732,11 +732,11 @@ def train_valid_test_split_main():
     :return: Nothing, creates new files
     """
 
-    source_path = r"/media/kitkat/Seagate Expansion Drive/Master_project/tiny_images_3"
-    dest_path = r"/media/kitkat/Seagate Expansion Drive/Master_project/machine_learning_dataset_3"
+    source_path = r"/media/kitkat/Seagate Expansion Drive/Master_project/tiny_images_5"
+    dest_path = r"/media/kitkat/Seagate Expansion Drive/Master_project/machine_learning_dataset_6"
 
-    train_valid_test_split(source_path, dest_path, split_by_big_images=True)
+    train_valid_test_split(source_path, dest_path, split_by_big_images=False)
 
 
 if __name__ == '__main__':
-    divide_and_filter_main()
+    train_valid_test_split_main()
