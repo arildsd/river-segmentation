@@ -58,13 +58,19 @@ class TrainingImage:
         :param output_filepath: The output file
         :return: Nothing
         """
-
+        bands = array.shape[-1] if len(array.shape) > 2 else 1
         driver = gdal.GetDriverByName("GTiff")
         raster = driver.Create(output_filepath, array.shape[1], array.shape[0],
-                      1, gdal.GDT_Int16)
+                      bands, gdal.GDT_Int16)
         raster.SetGeoTransform(geo_transform)
         raster.SetProjection(self.projection)
-        raster.GetRasterBand(1).WriteArray(array)
+        # Write multiple bands
+        if len(array.shape) > 2:
+            for band in range(array.shape[-1]):
+                raster.GetRasterBand(band + 1).WriteArray(array[:,:,band])
+        # Write single band
+        else:
+            raster.GetRasterBand(1).WriteArray(array)
         raster = None
 
     def write_data_to_raster(self, output_filepath):

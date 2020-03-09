@@ -55,7 +55,7 @@ def load_dataset(data_folder_path):
     return data
 
 
-def convert_training_images_to_numpy_arrays(training_images, one_hot_encode=False):
+def convert_training_images_to_numpy_arrays(training_images, one_hot_encode=False, normalize=True):
     """
     Converts the images from a list of TrainingImage objects to a numpy array for data and labels.
     :param training_images: A list of TrainingImage objects.
@@ -69,7 +69,8 @@ def convert_training_images_to_numpy_arrays(training_images, one_hot_encode=Fals
     data_set_X = np.expand_dims(data_set_X, -1)
     data_set_y = np.expand_dims(data_set_y, -1)
     # Normalize images to the range [0, 1]
-    data_set_X = data_set_X / (2 ** 8 - 1)  # 2**8 because of 8 bit encoding in original
+    if normalize:
+        data_set_X = data_set_X / (2 ** 8 - 1)  # 2**8 because of 8 bit encoding in original
 
     if one_hot_encode:
         data_set_y = tf.keras.utils.to_categorical(data_set_y, num_classes=6)
