@@ -246,6 +246,74 @@ def run(train_data_folder_path, val_data_folder_path, model_name="vgg16", freeze
     except Exception:
         print("Failed to print memory usage. This function was intended to run on a linux system.")
 
+
+def run_from_dir(train_data_folder_path, val_data_folder_path, model_name="vgg16", freeze="all",
+                 run_path="/home/kitkat/PycharmProjects/river-segmentation/runs"):
+    tf.keras.backend.clear_session()
+    start_time = time.time()
+
+    # Make run name based on parameters and timestamp
+    run_name = f"{model_name}_freeze_{freeze}"
+    date = str(datetime.datetime.now())
+    run_path = os.path.join(run_path, f"{date}_{run_name}".replace(" ", "_"))
+    os.makedirs(run_path, exist_ok=True)
+
+    # Setup data generators
+    image_datagen = tf.keras.preprocessing.image.ImageDataGenerator(preprocessing_function=lambda x: x/(2**8 -1))
+    mask_datagen = tf.keras.preprocessing.image.ImageDataGenerator()
+
+    image_generator = image_datagen.flow_from_directory(os.path.join(train_data_folder_path, "images"),
+                                                        class_mode=None, target_size=(512, 512), seed=1, batch_size=1)
+    mask_generator = mask_datagen.flow_from_directory(os.path.join(train_data_folder_path, "labels"),
+                                                      class_mode=None, target_size=(512, 512), seed=1, batch_size=1,
+                                                      color_mode="grayscale")
+    train_generator = (pair for pair in zip(image_generator, mask_generator))
+
+    # Validation data
+    val = model_utils.load_dataset(val_data_folder_path)
+    val_X, val_y = model_utils.convert_training_images_to_numpy_arrays(val)
+    val_X = model_utils.fake_colors(val_X)
+
+    # Load and compile model
+    if model_name.lower() == "vgg16":
+        model = vgg16_unet(freeze=freeze, context_mode=False, num_classes=5)
+    else:
+        # TODO: add more model options (DenseNet)
+        model = None
+    opt = tf.keras.optimizers.Adam(learning_rate=0.0001)
+    model.compile(opt, loss="sparse_categorical_crossentropy", metrics=["accuracy"])
+
+    # Define callbacks
+    callbacks = []
+    callbacks.append(tf.keras.callbacks.EarlyStopping(patience=10, monitor="val_loss"))
+
+    checkpoint = tf.keras.callbacks.ModelCheckpoint(os.path.join(run_path, "model.hdf5"),
+                                                    monitor="val_loss", save_best_only=True)
+    callbacks.append(checkpoint)
+
+    tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=run_path, histogram_freq=1)
+    callbacks.append(tensorboard_callback)
+
+    csv_logger = tf.keras.callbacks.CSVLogger(os.path.join(run_path, "log.csv"))
+    callbacks.append(csv_logger)
+
+    # Train the model
+    model.fit_generator(train_generator, epochs=100, validation_data=(val_X, val_y), steps_per_epoch=np.ceil(240/1), callbacks=callbacks)
+
+    # Print and save confusion matrix
+    print("Confusion matrix on the validation data")
+    conf_mat = model_utils.evaluate_model(model, val_X, val_y)
+    with open(os.path.join(run_path, "conf_mat.txt"), "w+") as f:
+        f.write(str(conf_mat))
+
+    try:
+        print("The current process uses the following amount of RAM (in GB) at its peak")
+        print(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 2 ** 20)
+        print(resource.getpagesize())
+    except Exception:
+        print("Failed to print memory usage. This function was intended to run on a linux system.")
+
+
 if __name__ == '__main__':
     model_name = "vgg16"
     freeze = "first"
