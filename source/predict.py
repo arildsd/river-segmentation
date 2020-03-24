@@ -27,8 +27,9 @@ def evaluate_dataset(model, data_folder_path):
     val = model_utils.load_dataset(data_folder_path)
     val_X, val_y = model_utils.convert_training_images_to_numpy_arrays(val)
     val_X = model_utils.fake_colors(val_X)
+    val_y = model_utils.replace_class(val_y, class_id=5)
 
-    return model_utils.evaluate_model(model, val_X, val_y)
+    return model_utils.evaluate_model(model, val_X, val_y, num_classes=5)
 
 
 def predict_on_image(model, image_path):

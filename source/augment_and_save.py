@@ -15,14 +15,9 @@ if __name__ == '__main__':
     source_path = sys.argv[1]
     dest_path = sys.argv[2]
 
-    source_path = r"/media/kitkat/Seagate Expansion Drive/Master_project/machine_learning_dataset_6/train/images"
-    dest_path = r"/home/kitkat/Desktop/augmenrs_to_file/"
-    print(source_path)
-    print(dest_path)
-
     # Load dataset
     image_paths = glob.glob(os.path.join(source_path, "*.tif"))
-    for image_path in image_paths[:20]:
+    for image_path in image_paths:
         image = model_utils.load_data(image_path, image_path.replace("images", "labels"))
         # Do preprocessing and image augmentation
         train_x, train_y = model_utils.convert_training_images_to_numpy_arrays([image], normalize=False)

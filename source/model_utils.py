@@ -145,7 +145,7 @@ def miou(y_true, y_pred, num_classes=6):
     return np.sum(ious)/num_classes
 
 
-def evaluate_model(model, data, labels):
+def evaluate_model(model, data, labels, num_classes=6):
     pred = model.predict(data, batch_size=1)
     pred = np.argmax(pred, axis=-1)
 
@@ -153,7 +153,7 @@ def evaluate_model(model, data, labels):
     f_pred = pred.flatten()
 
     conf_mat = sklearn.metrics.confusion_matrix(f_labels, f_pred)
-    mean_intersection_over_union = miou(f_labels, f_pred)
+    mean_intersection_over_union = miou(f_labels, f_pred, num_classes=num_classes)
     print(conf_mat)
     print(f"miou: {mean_intersection_over_union}")
     return conf_mat, mean_intersection_over_union

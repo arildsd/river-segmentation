@@ -248,7 +248,7 @@ def run(train_data_folder_path, val_data_folder_path, model_name="vgg16", freeze
 
 
 def run_from_dir(train_data_folder_path, val_data_folder_path, model_name="vgg16", freeze="all",
-                 run_path="/home/kitkat/PycharmProjects/river-segmentation/runs"):
+                 run_path="/home/kitkat/PycharmProjects/river-segmentation/runs", batch_size=4):
     tf.keras.backend.clear_session()
     start_time = time.time()
 
@@ -263,9 +263,9 @@ def run_from_dir(train_data_folder_path, val_data_folder_path, model_name="vgg16
     mask_datagen = tf.keras.preprocessing.image.ImageDataGenerator()
 
     image_generator = image_datagen.flow_from_directory(os.path.join(train_data_folder_path, "images"),
-                                                        class_mode=None, target_size=(512, 512), seed=1, batch_size=1)
+                                                        class_mode=None, target_size=(512, 512), seed=1, batch_size=batch_size)
     mask_generator = mask_datagen.flow_from_directory(os.path.join(train_data_folder_path, "labels"),
-                                                      class_mode=None, target_size=(512, 512), seed=1, batch_size=1,
+                                                      class_mode=None, target_size=(512, 512), seed=1, batch_size=batch_size,
                                                       color_mode="grayscale")
     train_generator = (pair for pair in zip(image_generator, mask_generator))
 
@@ -273,6 +273,7 @@ def run_from_dir(train_data_folder_path, val_data_folder_path, model_name="vgg16
     val = model_utils.load_dataset(val_data_folder_path)
     val_X, val_y = model_utils.convert_training_images_to_numpy_arrays(val)
     val_X = model_utils.fake_colors(val_X)
+    val_y = model_utils.replace_class(val_y, class_id=5)
 
     # Load and compile model
     if model_name.lower() == "vgg16":
@@ -298,7 +299,7 @@ def run_from_dir(train_data_folder_path, val_data_folder_path, model_name="vgg16
     callbacks.append(csv_logger)
 
     # Train the model
-    model.fit_generator(train_generator, epochs=100, validation_data=(val_X, val_y), steps_per_epoch=np.ceil(240/1), callbacks=callbacks)
+    model.fit_generator(train_generator, epochs=100, validation_data=(val_X, val_y), steps_per_epoch=int(np.ceil(57648/batch_size)), callbacks=callbacks, verbose=2)
 
     # Print and save confusion matrix
     print("Confusion matrix on the validation data")
