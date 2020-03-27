@@ -10,7 +10,7 @@ import model_utils
 import time
 import resource
 
-def vgg16_unet(image_size=512, n_max_filters=512, freeze="all", context_mode=False, num_classes=6):
+def vgg16_unet(image_size=512, n_max_filters=512, freeze="all", context_mode=False, dropout=0.0, num_classes=6):
     """
     A unet model that uses a pre-trained VGG16 CNN as the encoder part.
     :param image_size: The size of the input images
@@ -90,20 +90,26 @@ def vgg16_unet(image_size=512, n_max_filters=512, freeze="all", context_mode=Fal
 
     # Starting upscaling and decoding
     for i, skip_i in enumerate(reversed(range(len(skip_connections)))):
+        if dropout > 0: x = tf.keras.layers.Dropout(dropout)(x)
         x = tf.keras.layers.Conv2D(int(n_max_filters/(2**i)), kernel_size=(3, 3),
                                    padding="same", activation="relu")(x)  # Conv layer
+        if dropout > 0: x = tf.keras.layers.Dropout(dropout)(x)
         x = tf.keras.layers.Conv2D(int(n_max_filters/(2**i)), kernel_size=(3, 3),
                                    padding="same", activation="relu")(x)  # Conv layer
+        if dropout > 0: x = tf.keras.layers.Dropout(dropout)(x)
         x = tf.keras.layers.Conv2DTranspose(int(n_max_filters/(2**i)), kernel_size=(3, 3), strides=2,
                                             padding="same", activation="relu")(x)  # Upsample
         x = tf.concat([x, skip_connections[skip_i]], axis=-1)  # Add skip connection to the channels
 
     # Last conv layers
+    if dropout > 0: x = tf.keras.layers.Dropout(dropout)(x)
     x = tf.keras.layers.Conv2D(64, kernel_size=(3, 3), padding="same", activation="relu")(x)
+    if dropout > 0: x = tf.keras.layers.Dropout(dropout)(x)
     x = tf.keras.layers.Conv2D(64, kernel_size=(3, 3), padding="same", activation="relu")(x)
     if context_mode:
         # Crop to only predict on the middle pixels
         x = tf.keras.layers.MaxPool2D()(x)
+    if dropout > 0: x = tf.keras.layers.Dropout(dropout)(x)
     x = tf.keras.layers.Conv2D(num_classes, kernel_size=(3, 3), padding="same", activation="softmax")(x)
 
     model = tf.keras.Model(inputs=input, outputs=x)

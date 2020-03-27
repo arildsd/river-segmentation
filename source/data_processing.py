@@ -699,7 +699,32 @@ def train_valid_test_split(source_folder, dest_folder, train=0.8, valid=0.2, tes
                         os.path.join(dest_folder, "test", "images", path))
 
 
+def experiment_7_extra_filter(poly_path, image_dir, dest_dir):
+    """
+    In addition to mono class removal and removal of images with too much of the unknown class this function will
+    limit the data from Surna 1963 to a predefined area around the river. This area is marked by a polygon.
+    :return:
+    """
+    os.makedirs(dest_dir, exist_ok=True)
+    image_paths = glob.glob(os.path.join(image_dir, "*.tif"))
+    driver = ogr.GetDriverByName("ESRI Shapefile")
+    shape_ds = driver.Open(poly_path, 0)
+    layer = shape_ds.GetLayer()
+    polys = []
+    for feature in layer:
+        geom = feature.GetGeometryRef().Clone()
+        ref = osr.SpatialReference()
+        ref.ImportFromEPSG(25833)
+        geom.AssignSpatialReference(ref)
+        polys.append(geom)
 
+    for path in image_paths:
+        image_ds = gdal.Open(path)
+        image_bounding_box = create_bounding_box(image_ds)
+        for poly in polys:
+            if image_bounding_box.Intersects(poly):
+                shutil.copy(path, os.path.join(dest_dir, os.path.split(path)[-1]))
+                break
 
 
 def divide_and_filter_main():
@@ -713,9 +738,9 @@ def divide_and_filter_main():
     # Define path to label rasters
     LABEL_RASTER_ROOT_FOLDER = r"/media/kitkat/Seagate Expansion Drive/Master_project/labels/rasters"
     # Define the river folders that will be processed
-    RIVER_SUBFOLDER_NAMES = ["gaula_1963", "lærdal_1976", "surna_1963"]
+    RIVER_SUBFOLDER_NAMES = ["gaula_1963", "lærdal_1976"]
     # Destination root path
-    DEST_ROOT_PATH = r"/media/kitkat/Seagate Expansion Drive/Master_project/tiny_images_5"
+    DEST_ROOT_PATH = r"/media/kitkat/Seagate Expansion Drive/Master_project/tiny_images_6"
 
     # Create label rasters
     label_paths = []
@@ -738,8 +763,8 @@ def train_valid_test_split_main():
     :return: Nothing, creates new files
     """
 
-    source_path = r"/media/kitkat/Seagate Expansion Drive/Master_project/tiny_images_5"
-    dest_path = r"/media/kitkat/Seagate Expansion Drive/Master_project/machine_learning_dataset_6"
+    source_path = r"/media/kitkat/Seagate Expansion Drive/Master_project/tiny_images_6"
+    dest_path = r"/media/kitkat/Seagate Expansion Drive/Master_project/machine_learning_dataset_7"
 
     train_valid_test_split(source_path, dest_path, split_by_big_images=False)
 
