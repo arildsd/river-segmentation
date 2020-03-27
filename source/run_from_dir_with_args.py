@@ -9,9 +9,9 @@ if __name__ == '__main__':
     model_name = sys.argv[1]
     freeze = sys.argv[2]
     if len(sys.argv) >= 4:
-        dropout = sys.argv[3]
+        dropout = float(sys.argv[3])
     else:
-        dropout = 0
+        dropout = 0.0
 
     train_data_folder_path = r"/home/arildsd/machine_learning_dataset_6_png/train"
     val_data_folder_path = r"/home/arildsd/machine_learning_dataset_6/val"
