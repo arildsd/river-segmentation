@@ -179,7 +179,8 @@ def dense_net121(image_size=512, n_max_filters=512, freeze="all", context_mode=F
 
 
 def run(train_data_folder_path, val_data_folder_path, model_name="vgg16", freeze="all", image_augmentation=False,
-        context_mode=False, run_path="/home/kitkat/PycharmProjects/river-segmentation/runs", replace_unknown=False):
+        context_mode=False, run_path="/home/kitkat/PycharmProjects/river-segmentation/runs", replace_unknown=False,
+        dropout=0):
     tf.keras.backend.clear_session()
     start_time = time.time()
 
@@ -215,7 +216,8 @@ def run(train_data_folder_path, val_data_folder_path, model_name="vgg16", freeze
 
     # Load and compile model
     if model_name.lower() == "vgg16":
-        model = vgg16_unet(freeze=freeze, context_mode=context_mode, num_classes=5 if replace_unknown else 6)
+        model = vgg16_unet(freeze=freeze, context_mode=context_mode, num_classes=5 if replace_unknown else 6,
+                           dropout=dropout)
     else:
         # TODO: add more model options (DenseNet)
         model = None
@@ -254,7 +256,7 @@ def run(train_data_folder_path, val_data_folder_path, model_name="vgg16", freeze
 
 
 def run_from_dir(train_data_folder_path, val_data_folder_path, model_name="vgg16", freeze="all",
-                 run_path="/home/kitkat/PycharmProjects/river-segmentation/runs", batch_size=4):
+                 run_path="/home/kitkat/PycharmProjects/river-segmentation/runs", batch_size=1, dropout=0):
     tf.keras.backend.clear_session()
     start_time = time.time()
 
@@ -283,7 +285,7 @@ def run_from_dir(train_data_folder_path, val_data_folder_path, model_name="vgg16
 
     # Load and compile model
     if model_name.lower() == "vgg16":
-        model = vgg16_unet(freeze=freeze, context_mode=False, num_classes=5)
+        model = vgg16_unet(freeze=freeze, context_mode=False, num_classes=5, dropout=dropout)
     else:
         # TODO: add more model options (DenseNet)
         model = None
