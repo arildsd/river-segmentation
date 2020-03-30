@@ -12,6 +12,7 @@ provided as well as a trained model. The predictions will be written to a output
 the big image format as geo referenced tiff files. 
 """
 
+
 def run(model_path, input_folder, output_folder):
     model = model_utils.load_model(model_path)
     big_image_paths = glob.glob(os.path.join(input_folder, "*.tif"))
@@ -31,12 +32,15 @@ def run(model_path, input_folder, output_folder):
         big_image_ds = gdal.Open(big_image_path)
         geo_transform = big_image_ds.GetGeoTransform()
         projection = big_image_ds.GetProjection()
+        big_image_shape = (big_image_ds.RasterYSize, big_image_ds.RasterXSize)
         big_image_ds = None  # Close the image the gdal way
 
-        big_image_array = data_processing.reassemble_big_image(images, small_image_size=512)
+        big_image_array = data_processing.reassemble_big_image(images, small_image_size=512,
+                                                               big_image_shape=big_image_shape)
         big_image = data_processing.TrainingImage(big_image_array, big_image_array, geo_transform,
                                                   projection=projection, name=os.path.split(big_image_path)[-1])
         big_image.write_labels_to_raster(os.path.join(output_folder, big_image.name))
+
 
 if __name__ == '__main__':
     os.environ["CUDA_VISIBLE_DEVICES"] = "-1"

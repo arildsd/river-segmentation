@@ -356,8 +356,8 @@ def find_closest_pixel(i, j, arrays, threshold=10):
     return 5
 
 
-def reassemble_big_image(images, small_image_size=512):
-    big_image = np.zeros((6000, 8000)) + 5
+def reassemble_big_image(images, small_image_size=512, big_image_shape=(6000, 8000)):
+    big_image = np.zeros(big_image_shape) + 5
     for image in images:
         image_offset_shape_0 = image.north_offset
         image_offset_shape_1 = image.east_offset
