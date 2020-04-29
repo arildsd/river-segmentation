@@ -9,9 +9,10 @@ Class ids: 0: Water. 1: Gravel. 2:Vegetation. 3:Farmland. 4: Human-constructions
 """
 
 if __name__ == '__main__':
-    image_folder = r"/media/kitkat/Seagate Expansion Drive/Master_project/dataset_extention/surna_1963_predictions/working_on"
-    shapefile_path = r"/media/kitkat/Seagate Expansion Drive/Master_project/dataset_extention/surna_1963_predictions/working_on/human-constructions.shp"
+    image_folder = r"/media/kitkat/Seagate Expansion Drive/Master_project/gaula_1963_test_set/raster_corrections"
+    shapefile_path = r"/media/kitkat/Seagate Expansion Drive/Master_project/gaula_1963_test_set/shapefile_corrections/human-constructions.shp"
     class_id = 4
+    print(f"Class id = {class_id}")
     print(os.path.exists(shapefile_path))
     image_paths = glob.glob(os.path.join(image_folder, "*.tif"))
     for path in image_paths:
