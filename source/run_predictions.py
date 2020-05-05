@@ -13,7 +13,7 @@ the big image format as geo referenced tiff files.
 """
 
 
-def run(model_path, input_folder, output_folder):
+def run(model_path, input_folder, output_folder, intensity_correction=0.0):
     model = model_utils.load_model(model_path)
     big_image_paths = glob.glob(os.path.join(input_folder, "*.tif"))
     for big_image_path in big_image_paths:
@@ -22,6 +22,7 @@ def run(model_path, input_folder, output_folder):
         # Make predictions
         for image in images:
             data = model_utils.convert_training_images_to_numpy_arrays([image])[0]
+            data += intensity_correction / (2**8 - 1)
             data = model_utils.fake_colors(data)
 
             prediction = model.predict(data)
@@ -43,12 +44,13 @@ def run(model_path, input_folder, output_folder):
 
 
 if __name__ == '__main__':
-    os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
-
     # Get args
     model_path = sys.argv[1]
     input_folder = sys.argv[2]
     output_folder = sys.argv[3]
-
+    if len(sys.argv) >= 5:
+        intensity_correction = float(sys.argv[4])
+    else:
+        intensity_correction = 0.0
     # Predict and write to file
-    run(model_path, input_folder, output_folder)
+    run(model_path, input_folder, output_folder, intensity_correction=intensity_correction)
