@@ -23,16 +23,17 @@ def evaluate_dataset_main():
     evaluate_dataset(model, data_folder_path)
 
 
-def evaluate_dataset(model, data_folder_path):
+def evaluate_dataset(model, data_folder_path, intensity_correction=0.0):
     val = model_utils.load_dataset(data_folder_path)
     val_X, val_y = model_utils.convert_training_images_to_numpy_arrays(val)
+    val_X += intensity_correction / (2**8 - 1)  # Adjust for differing light levels in training and this dataset
     val_X = model_utils.fake_colors(val_X)
     val_y = model_utils.replace_class(val_y, class_id=5)
 
     return model_utils.evaluate_model(model, val_X, val_y, num_classes=5)
 
 
-def predict_on_image(model, image_path):
+def predict_on_image(model, image_path, intensity_correction=0.0):
     """
     Use the model to give a prediction on a image.
     :param model: A keras model.
@@ -43,6 +44,7 @@ def predict_on_image(model, image_path):
     # Load image
     training_image = model_utils.load_data(image_path, image_path)
     data_X = model_utils.convert_training_images_to_numpy_arrays([training_image])[0]
+    data_X += intensity_correction / (2**8 - 1)  # Adjust for differing light levels in training and this dataset
     data_X = model_utils.fake_colors(data_X)
 
     prediction = model.predict(data_X)
@@ -54,11 +56,11 @@ def predict_on_image(model, image_path):
     return training_image
 
 
-def predict_on_images(model, image_folder):
+def predict_on_images(model, image_folder, intensity_correction=0.0):
     paths = glob.glob(os.path.join(image_folder, "*.tif"))
     predictions = []
     for path in paths:
-        predictions.append(predict_on_image(model, path))
+        predictions.append(predict_on_image(model, path), intensity_correction=intensity_correction)
 
     return predictions
 
@@ -86,10 +88,11 @@ def predict_on_image_main():
     image.write_labels_to_raster(output_path)
 
 
-def predict_and_evaluate(model_path, data_folder, output_folder):
+def predict_and_evaluate(model_path, data_folder, output_folder, intensity_correction=0.0):
     model = model_utils.load_model(model_path)
 
-    predictions = predict_on_images(model, os.path.join(data_folder, "images"))
+    predictions = predict_on_images(model, os.path.join(data_folder, "images"),
+                                    intensity_correction=intensity_correction)
     os.makedirs(output_folder, exist_ok=True)
     for pred in predictions:
         pred.write_labels_to_raster(os.path.join(output_folder, pred.name))
@@ -118,8 +121,12 @@ def run_with_args():
     model_path = sys.argv[1]
     data_folder = sys.argv[2]
     output_folder = sys.argv[3]
+    if len(sys.argv) >= 5:
+        intensity_correction = sys.argv[4]
+    else:
+        intensity_correction = 0.0
 
-    predict_and_evaluate(model_path, data_folder, output_folder)
+    predict_and_evaluate(model_path, data_folder, output_folder, intensity_correction=intensity_correction)
 
 if __name__ == '__main__':
     tf.keras.backend.clear_session()
