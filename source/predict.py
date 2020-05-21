@@ -1,4 +1,3 @@
-import gdal
 import tensorflow as tf
 import model_utils
 import numpy as np
@@ -60,7 +59,7 @@ def predict_on_images(model, image_folder, intensity_correction=0.0):
     paths = glob.glob(os.path.join(image_folder, "*.tif"))
     predictions = []
     for path in paths:
-        predictions.append(predict_on_image(model, path), intensity_correction=intensity_correction)
+        predictions.append(predict_on_image(model, path, intensity_correction=intensity_correction))
 
     return predictions
 
@@ -103,14 +102,6 @@ def predict_and_evaluate(model_path, data_folder, output_folder, intensity_corre
     np.savetxt(os.path.join(output_folder, "val_conf_mat.csv"), conf_mat, delimiter=",")
     with open(os.path.join(output_folder, "val_miou.txt"), "w+") as f:
         f.write(str(miou))
-
-
-def predict_and_evaluate_main():
-    model_path = r"/home/kitkat/Master_project/runs/2020-02-06_17:22:25.938932_vgg16_freeze_first_no_augment/model.hdf5"
-    data_folder = r"/media/kitkat/Seagate Expansion Drive/Master_project/machine_learning_dataset_3/val"
-    output_folder = r"/home/kitkat/Master_project/runs/2020-02-06_17:22:25.938932_vgg16_freeze_first_no_augment/predictions"
-
-    predict_and_evaluate(model_path, data_folder, output_folder)
 
 
 def run_with_args():

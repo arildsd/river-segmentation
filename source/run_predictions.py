@@ -7,8 +7,9 @@ import numpy as np
 import gdal
 
 """
-This script should be used to make predictions on a set of big images (6000x8000 pixels). A folder of images must be 
-provided as well as a trained model. The predictions will be written to a output folder. The output images will be in
+This script should be used to make predictions on a set of big images (6000x8000 pixels). Image of other sizes should 
+also work but this has not been tested. A folder of images must be provided as well as a trained model. 
+The predictions will be written to a output folder. The output images will be in
 the big image format as geo referenced tiff files. 
 """
 

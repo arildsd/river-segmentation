@@ -1,8 +1,4 @@
 import data_processing
-import os
-import glob
-import sys
-import numpy as np
 
 if __name__ == '__main__':
     shapefile_path = r"/media/kitkat/Seagate Expansion Drive/Master_project/"
