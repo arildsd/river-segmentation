@@ -1,18 +1,16 @@
 import tensorflow as tf
 import numpy as np
-import pandas as pd
-import glob
-import sys
 import os
-import random
 import datetime
 import model_utils
 import time
 import resource
 
-def vgg16_unet(image_size=512, n_max_filters=512, freeze="all", context_mode=False, dropout=0.0, num_classes=6):
+
+def vgg16_unet(image_size=512, n_max_filters=512, freeze="all", context_mode=False, dropout=0.0, num_classes=5):
     """
     A unet model that uses a pre-trained VGG16 CNN as the encoder part.
+    :param num_classes: The number of classes
     :param image_size: The size of the input images
     :param n_max_filters: The number of filters at the bottom layer of the unet model.
     :param freeze: Specifies what layers to freeze during training. The frozen layers will not be trained.
@@ -51,11 +49,9 @@ def vgg16_unet(image_size=512, n_max_filters=512, freeze="all", context_mode=Fal
         if i < freeze_until:
             layer.trainable = False
 
-
     skip_connections = []
 
     # Get first conv block
-    #input = vgg16.layers[0]  # Input layer in vgg
     x = vgg16.layers[1](input)  # Conv layer
     x = vgg16.layers[2](x)  # Conv layer
     skip_connections.append(x)
@@ -117,70 +113,25 @@ def vgg16_unet(image_size=512, n_max_filters=512, freeze="all", context_mode=Fal
     return model
 
 
-def dense_net121(image_size=512, n_max_filters=512, freeze="all", context_mode=False):
-    """
-    A unet model that uses a pre-trained VGG16 CNN as the encoder part.
-    :param image_size: The size of the input images
-    :param n_max_filters: The number of filters at the bottom layer of the unet model.
-    :param freeze: Specifies what layers to freeze during training. The frozen layers will not be trained.
-                all: all of the VGG16 layers are frozen. first: all but the last conv block of VGG16 is frozen.
-                none: no layers are frozen
-    :return: A keras model
-    """
-
-    # Define input. It has 3 color channels since dense net is trained on a color dataset
-    input = tf.keras.Input(shape=(image_size, image_size, 3))
-
-    # Load pre-trained model
-    dense_net = tf.keras.applications.densenet.DenseNet121(weights="imagenet",
-                                              include_top=False, input_tensor=input)
-    # There are pooling layers at these indices:  6, 52, 140, 312, 427
-
-    freeze_until = None
-    if freeze == "all":
-        freeze_until = 427
-    elif freeze == "first":
-        freeze_until = 312
-    else:
-        freeze_until = 0
-
-    for i, layer in enumerate(dense_net.layers):
-        if i < freeze_until:
-            layer.trainable = False
-
-    skip_connections = []
-
-    # 1st dense block
-    x = dense_net.layers[0:6](input)
-    skip_connections.append(x)
-    x = dense_net.layers[6](x)
-
-    # 2nd dense block
-    x = dense_net.layers[7:52](x)
-    skip_connections.append(x)
-    x = dense_net[52](x)
-
-    # 3rd dense block
-    x = dense_net.layers[53:140](x)
-    skip_connections.append(x)
-    x = dense_net.layers[140](x)
-
-    # 4th dense block
-    x = dense_net.layers[141:312](x)
-    skip_connections.append(x)
-    x = dense_net.layers[312]
-
-    # 5th dense block
-    x = dense_net.layers[313:427](x)
-    skip_connections.append(x)
-    x = dense_net.layers[427](x)
-
-
-
-
-def run(train_data_folder_path, val_data_folder_path, model_name="vgg16", freeze="all", image_augmentation=False,
-        context_mode=False, run_path="/home/kitkat/PycharmProjects/river-segmentation/runs", replace_unknown=False,
+def run(train_data_folder_path, val_data_folder_path, model_name="vgg16", freeze="all", image_augmentation=True,
+        context_mode=False, run_path="/home/kitkat/PycharmProjects/river-segmentation/runs", replace_unknown=True,
         dropout=0):
+    """
+    Trains a CNN Unet model and saves the best model to file. If using large datasets consider using the run_from_dir
+    function instead to decrease RAM usage.
+
+    :param train_data_folder_path: Path to the folder containing training images (.tif format)
+    :param val_data_folder_path: Path to the folder containing validation images (.tif format)
+    :param model_name: The name of the model. Supported models are: vgg16
+    :param freeze: Determine how many blocks in the encoder that are frozen during training.
+    Should be all, first, 1, 2, 3, 4, 5 or none
+    :param image_augmentation: Determines if image augmentation are used on the training data.
+    :param context_mode: Determines if image context are included on the training data. Recommended set to False
+    :param run_path: Folder where the run information and model will be saved.
+    :param replace_unknown: When True the unknown class in the training date will be replaced using closest neighbor.
+    :param dropout: Drop rate, [0.0, 1)
+    :return: Writes model to the run folder, nothing is returned.
+    """
     tf.keras.backend.clear_session()
     start_time = time.time()
 
@@ -219,7 +170,6 @@ def run(train_data_folder_path, val_data_folder_path, model_name="vgg16", freeze
         model = vgg16_unet(freeze=freeze, context_mode=context_mode, num_classes=5 if replace_unknown else 6,
                            dropout=dropout)
     else:
-        # TODO: add more model options (DenseNet)
         model = None
     opt = tf.keras.optimizers.Adam(learning_rate=0.0001)
     model.compile(opt, loss="sparse_categorical_crossentropy", metrics=["accuracy"])
@@ -257,6 +207,20 @@ def run(train_data_folder_path, val_data_folder_path, model_name="vgg16", freeze
 
 def run_from_dir(train_data_folder_path, val_data_folder_path, model_name="vgg16", freeze="all",
                  run_path="/home/kitkat/PycharmProjects/river-segmentation/runs", batch_size=1, dropout=0):
+    """
+        Trains a CNN Unet model and saves the best model to file. Uses training images from disk instead of loading
+        everything into RAM.
+
+        :param train_data_folder_path: Path to the folder containing training images (.png format)
+        :param val_data_folder_path: Path to the folder containing validation images (.png format)
+        :param model_name: The name of the model. Supported models are: vgg16
+        :param freeze: Determine how many blocks in the encoder that are frozen during training.
+        Should be all, first, 1, 2, 3, 4, 5 or none
+        :param run_path: Folder where the run information and model will be saved.
+        :param dropout: Drop rate, [0.0, 1)
+        :return: Writes model to the run folder, nothing is returned.
+        """
+
     tf.keras.backend.clear_session()
     start_time = time.time()
 
@@ -287,7 +251,6 @@ def run_from_dir(train_data_folder_path, val_data_folder_path, model_name="vgg16
     if model_name.lower() == "vgg16":
         model = vgg16_unet(freeze=freeze, context_mode=False, num_classes=5, dropout=dropout)
     else:
-        # TODO: add more model options (DenseNet)
         model = None
     opt = tf.keras.optimizers.Adam(learning_rate=0.0001)
     model.compile(opt, loss="sparse_categorical_crossentropy", metrics=["accuracy"])
@@ -326,7 +289,7 @@ def run_from_dir(train_data_folder_path, val_data_folder_path, model_name="vgg16
 if __name__ == '__main__':
     model_name = "vgg16"
     freeze = "first"
-    image_augmentation = False
+    image_augmentation = True
     context_mode = False
     run_path = "/home/kitkat/PycharmProjects/river-segmentation/runs"
 
