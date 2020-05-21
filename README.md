@@ -1,6 +1,6 @@
 # river-segmentation
 
-A Convolutional Neural Network Unet model to segment B&W aerial images into ecologival segments.
+A Convolutional Neural Network Unet model to segment B&W aerial images into ecological segments.
 
 ## Installation
 
