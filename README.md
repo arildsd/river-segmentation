@@ -14,7 +14,7 @@ conda install --yes --file requirements.txt
 conda activate myenvname
 
 ## Make prediction with the model
-The project includes a trained model that can be used to make predictions on black-and-white areal images of rivers.
+The project includes a trained model that can be used to make predictions on black-and-white areal images of rivers. Download the model (https://drive.google.com/file/d/1GDZ25vxDchf-C_848oPZHNtp7Up7g5NN/view?usp=sharing)
 To make a prediction:
 python source/run_predictions.py model_path input_folder output_folder
 
